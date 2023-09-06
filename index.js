@@ -19,8 +19,6 @@ app.listen(port, () => {
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.PASSWORD}@cluster0.iidrxjp.mongodb.net/?retryWrites=true&w=majority`;
 
-console.log(uri);
-
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -31,11 +29,27 @@ const client = new MongoClient(uri, {
 });
 
 async function run() {
-  // Connect the client to the server	(optional starting in v4.7)
-  await client.connect();
-  // Send a ping to confirm a successful connection
-  await client.db("admin").command({ ping: 1 });
-  console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  const userCollection = client
+    .db("Construction-Application")
+    .collection("users");
+
+  app.get("/getUser", async (req, res) => {
+    const userId = req.query.id;
+    console.log(userId);
+
+    const result = await userCollection.findOne({ userId });
+
+    if (result) {
+      res.send({
+        status: 1,
+        userInfo: result,
+      });
+    } else {
+      res.send({
+        status: 0,
+      });
+    }
+  });
 }
 
 run().catch(console.dir);
