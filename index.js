@@ -3,6 +3,7 @@ const cors = require("cors");
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 
 require("dotenv").config();
 
@@ -29,10 +30,12 @@ const client = new MongoClient(uri, {
 });
 
 async function run() {
+  // All collections
   const userCollection = client
     .db("Construction-Application")
     .collection("users");
 
+  // get users data
   app.get("/getUser", async (req, res) => {
     const userId = req.query.id;
     console.log(userId);
@@ -50,6 +53,38 @@ async function run() {
       });
     }
   });
+
+  // get all users
+  app.get("/allUser", async (req, res) => {
+    const cursor = userCollection.find({});
+    const result = await cursor.toArray();
+    res.send(result);
+  });
+
+  // store user data
+  app.post("/addUser", async (req, res) => {
+    const userInfo = req.body;
+
+    console.log(userInfo);
+
+    const findSameIdPerson = await userCollection.findOne({
+      userId: userInfo.userId,
+    });
+    console.log(findSameIdPerson);
+
+    if (findSameIdPerson) {
+      res.send({
+        result: 0,
+        message: "User id already exist",
+      });
+    } else {
+      const result = await userCollection.insertOne(userInfo);
+      res.send(result);
+    }
+  });
 }
 
 run().catch(console.dir);
+
+// Export the Express API
+module.exports = app;
