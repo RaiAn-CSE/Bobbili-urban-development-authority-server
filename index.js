@@ -17,7 +17,7 @@ app.listen(port, () => {
   console.log("Server is running on port ", port);
 });
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.PASSWORD}@cluster0.iidrxjp.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -81,6 +81,47 @@ async function run() {
       const result = await userCollection.insertOne(userInfo);
       res.send(result);
     }
+  });
+
+  // update user data
+  app.patch("/updateUserData/:id", async (req, res) => {
+    const userId = req.params.id;
+    const newDraftData = req.body;
+
+    // console.log(newData);
+    // console.log(userId);
+
+    console.log(newDraftData, "NewDraftdata");
+    // console.log(path, newDraftData);
+
+    const filter = { _id: new ObjectId(userId) };
+
+    const { draftApplication: oldDraftData } = await userCollection.findOne(
+      filter
+    );
+    console.log(oldDraftData, "Old draft data");
+
+    const findExistingData = oldDraftData.findIndex(
+      (application) => application.applicationNo === newDraftData.applicationNo
+    );
+
+    console.log(findExistingData, "findExistingData");
+
+    if (findExistingData === -1) {
+      oldDraftData.push(newDraftData);
+    } else {
+      oldDraftData[findExistingData] = newDraftData;
+    }
+
+    const updateDoc = {
+      $set: {
+        draftApplication: oldDraftData,
+      },
+    };
+
+    const result = await userCollection.updateOne(filter, updateDoc);
+
+    res.send(result);
   });
 }
 
