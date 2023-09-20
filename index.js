@@ -83,8 +83,8 @@ async function run() {
     }
   });
 
-  // update user data
-  app.patch("/updateUserData/:id", async (req, res) => {
+  // update user draft application  data
+  app.patch("/updateDraftApplicationData/:id", async (req, res) => {
     const userId = req.params.id;
     const newDraftData = req.body;
 
@@ -120,6 +120,18 @@ async function run() {
     };
 
     const result = await userCollection.updateOne(filter, updateDoc);
+
+    res.send(result);
+  });
+
+  // delete an individual user
+  app.delete("/deleteUser/:id", async (req, res) => {
+    const userId = req.params.id;
+    console.log(userId);
+
+    const query = { _id: new ObjectId(userId) };
+
+    const result = await userCollection.deleteOne(query);
 
     res.send(result);
   });
