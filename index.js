@@ -37,15 +37,18 @@ async function run() {
 
   // get users data
   app.get("/getUser", async (req, res) => {
-    const userId = req.query.id;
-    console.log(userId);
+    const id = req.query.id;
+    console.log(id);
 
-    const result = await userCollection.findOne({ userId });
+    const result = await userCollection.findOne({ userId: id });
+
+    console.log(result);
+    const { _id, role, userId, password, name } = result;
 
     if (result) {
       res.send({
         status: 1,
-        userInfo: result,
+        userInfo: { _id, role, userId, password, name },
       });
     } else {
       res.send({
@@ -59,6 +62,18 @@ async function run() {
     const cursor = userCollection.find({});
     const result = await cursor.toArray();
     res.send(result);
+  });
+
+  //get users draftapplication
+  app.get("/draftApplications/:id", async (req, res) => {
+    const id = req.params.id;
+    console.log(id);
+
+    const { draftApplication } = await userCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    res.send(draftApplication);
   });
 
   // store user data
