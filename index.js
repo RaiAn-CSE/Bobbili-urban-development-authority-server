@@ -76,6 +76,43 @@ async function run() {
     res.send(draftApplication);
   });
 
+  // get specific applicationNo data
+  app.get("/getApplicationData", async (req, res) => {
+    const { appNo, userId } = JSON.parse(req.query.data);
+    console.log(req.query.data);
+
+    console.log(appNo, userId);
+
+    const result = await userCollection
+      .aggregate([
+        {
+          $match: {
+            _id: new ObjectId(userId),
+            "draftApplication.applicationNo": appNo,
+          },
+        },
+        {
+          $project: {
+            draftApplication: {
+              $filter: {
+                input: "$draftApplication",
+                as: "app",
+                cond: {
+                  $eq: ["$$app.applicationNo", appNo],
+                },
+              },
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    const draftApplicationData = result[0]?.draftApplication[0];
+
+    console.log(draftApplicationData);
+    res.send(draftApplicationData);
+  });
+
   // store user data
   app.post("/addUser", async (req, res) => {
     const userInfo = req.body;
