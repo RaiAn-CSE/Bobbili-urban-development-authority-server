@@ -103,18 +103,12 @@ async function run() {
     const userId = req.params.id;
     const newDraftData = req.body;
 
-    // console.log(newData);
-    // console.log(userId);
-
-    console.log(newDraftData, "NewDraftdata");
-    // console.log(path, newDraftData);
-
     const filter = { _id: new ObjectId(userId) };
 
     const { draftApplication: oldDraftData } = await userCollection.findOne(
       filter
     );
-    console.log(oldDraftData, "Old draft data");
+    // console.log(oldDraftData, "Old draft data");
 
     const findExistingData = oldDraftData.findIndex(
       (application) => application.applicationNo === newDraftData.applicationNo
@@ -125,7 +119,10 @@ async function run() {
     if (findExistingData === -1) {
       oldDraftData.push(newDraftData);
     } else {
-      oldDraftData[findExistingData] = newDraftData;
+      oldDraftData[findExistingData] = {
+        ...oldDraftData[findExistingData],
+        ...newDraftData,
+      };
     }
 
     const updateDoc = {
@@ -133,6 +130,9 @@ async function run() {
         draftApplication: oldDraftData,
       },
     };
+
+    // console.log(oldDraftData[findExistingData]);
+    // console.log(newDraftData);
 
     const result = await userCollection.updateOne(filter, updateDoc);
 
@@ -171,6 +171,22 @@ async function run() {
 
     const result = await userCollection.deleteOne(query);
 
+    res.send(result);
+  });
+
+  // delete specific draft application
+  app.delete("/deleteSingleDraft", async (req, res) => {
+    const { applicationNo, userID } = req.body;
+
+    console.log(applicationNo, userID);
+
+    // const userInfo = await userCollection.findOne({ _id: ObjectId(userID) });
+
+    const result = await userCollection.updateOne(
+      { _id: new ObjectId(`${userID}`) },
+      { $pull: { draftApplication: { applicationNo } } }
+    );
+    console.log(result);
     res.send(result);
   });
 }
