@@ -2,3 +2,5 @@
 
 .env
 .vercel
+
+/apikeys.json

@@ -1,11 +1,147 @@
 const express = require("express");
 const cors = require("cors");
-
 const app = express();
+const mime = require("mime-types");
+const multer = require("multer");
+const stream = require("stream");
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+const storage = multer.memoryStorage(); // Store file in memory (can also use diskStorage)
+const upload = multer({ storage: storage });
+// app.use(uploadRouter);
 
 require("dotenv").config();
+
+const { google } = require("googleapis");
+const path = require("path");
+const fs = require("fs");
+const apiKeys = require("./apikeys.json");
+
+const SCOPE = ["https://www.googleapis.com/auth/drive"];
+// A Function that can provide access to google drive api
+async function authorize() {
+  const jwtClient = new google.auth.JWT(
+    apiKeys.client_email,
+    null,
+    apiKeys.private_key,
+    SCOPE
+  );
+
+  await jwtClient.authorize();
+  return jwtClient;
+}
+// A Function that will upload the desired file to google drive folder
+
+const no = 1;
+// async function uploadFile(authClient) {
+//   return new Promise((resolve, rejected) => {
+//     console.log("Asci");
+//     console.log(no);
+//     const drive = google.drive({ version: "v3", auth: authClient });
+
+//     var fileMetaData = {
+//       name: "mydrivetext.txt",
+//       parents: ["1xfk1StJ2AscqxDDoLwNj3tPRUS_dLpw5"], // A folder ID to which file will get uploaded
+//     };
+//     drive.files.create(
+//       {
+//         resource: fileMetaData,
+//         media: {
+//           body: fs.createReadStream("mydrivetext.txt"), // files that will get uploaded
+//           mimeType: "text/plain",
+//         },
+//         fields: "id",
+//       },
+//       function (error, file) {
+//         if (error) {
+//           console.log("error");
+//           return rejected(error);
+//         }
+//         resolve(file);
+//       }
+//     );
+//   });
+// }
+// authorize()
+//   .then(uploadFile)
+//   .then((res) => {
+//     // console.log(res);
+//   })
+//   .catch((err) => {
+//     console.log(err);
+//   });
+
+// const CLIENT_ID =
+//   "725149149598-vs93d7ts9v4f2vk3kl2s2mqucpc75rgi.apps.googleusercontent.com";
+// const CLIENT_SECRET = "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";
+// const REDIRECT_URI = "https://developers.google.com/oauthplayground";
+// const REFRESH_TOKEN =
+//   "1//04ieUxrHMKbp_CgYIARAAGAQSNwF-L9IrxuQw2g6wjr5VN9TMTk-qoUZDqibJST3UwaILhDUTro1nqLzNShCcwXZPmIWZw4MZ4h0";
+
+// const oauth2Client = new google.auth.OAuth2(
+//   CLIENT_ID,
+//   CLIENT_SECRET,
+//   REDIRECT_URI
+// );
+
+// oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+
+// const drive = google.drive({
+//   version: "v3",
+//   auth: oauth2Client,
+// });
+
+const filePath = path.join(__dirname, "example.png");
+
+console.log(mime.contentType("example.DWG"));
+
+// async function uploadFile() {
+//   try {
+//     const response = await drive.files.create({
+//       requestBody: {
+//         name: "example.png", //This can be name of your choice
+//         mimeType: "image/png",
+//       },
+//       media: {
+//         mimeType: "image/png",
+//         body: fs.createReadStream(filePath),
+//       },
+//     });
+
+//     console.log(response.data);
+//   } catch (error) {
+//     console.log(error.message);
+//   }
+// }
+
+// uploadFile();
+
+const uploadFile = async (authClient, fileObject) => {
+  const bufferStream = new stream.PassThrough();
+
+  // console.log(fileObject, "FILE OBJECT");
+  // console.log(bufferStream, "BufferStream");
+  bufferStream.end(fileObject.buffer);
+
+  const { data } = await google
+    .drive({ version: "v3", auth: authClient })
+    .files.create({
+      media: {
+        mimeType: fileObject.mimeType,
+        body: bufferStream,
+      },
+      requestBody: {
+        name: fileObject.originalname,
+        parents: ["1xfk1StJ2AscqxDDoLwNj3tPRUS_dLpw5"],
+      },
+      fields: "id,name",
+    });
+  console.log(`Uploaded file ${data.name} ${data.id}`);
+
+  return data.id;
+};
 
 const port = process.env.PORT || 5000;
 
@@ -135,10 +271,54 @@ async function run() {
     }
   });
 
+  app.post("/upload", upload.array("files"), async (req, res) => {
+    // Access uploaded file via req.file
+
+    console.log("Aschi");
+    const file = req.files;
+    // console.log(file);
+    if (!file) {
+      return res.status(400).send({ msg: "No file uploaded." });
+    }
+
+    const uploadFileId = [];
+    let promises = [];
+
+    for (let f = 0; f < file.length; f += 1) {
+      promises.push(
+        authorize()
+          .then((authClient) => uploadFile(authClient, file[f]))
+          .then((res) => {
+            console.log(res, "RESPONSE");
+            uploadFileId.push(res);
+          })
+          .catch((err) => {
+            console.log(err);
+            res.send({ msg: "Something went wrong" });
+          })
+      );
+
+      // console.log(uploadFileId, "UPLOADFILEID");
+    }
+    // Use Promise.all to wait for all promises to resolve
+    Promise.all(promises)
+      .then(() => {
+        // Handle the file, save it to disk, or perform other processing
+        console.log("All uploads completed");
+        console.log(uploadFileId);
+        res.send({ msg: "Successfully uploaded", fileId: uploadFileId });
+      })
+      .catch((error) => {
+        res.send({ msg: "An error occurred during uploads" });
+      });
+  });
+
   // update user draft application  data
   app.patch("/updateDraftApplicationData/:id", async (req, res) => {
     const userId = req.params.id;
     const newDraftData = req.body;
+
+    console.log(userId, "USERID", "NEW DRAFT", newDraftData);
 
     const filter = { _id: new ObjectId(userId) };
 
