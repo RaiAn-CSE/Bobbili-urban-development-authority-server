@@ -118,10 +118,10 @@ console.log(mime.contentType("example.DWG"));
 
 // uploadFile();
 
-const uploadFile = async (authClient, fileObject) => {
+const uploadFile = async (authClient, fileObject, folderId) => {
   const bufferStream = new stream.PassThrough();
 
-  // console.log(fileObject, "FILE OBJECT");
+  console.log(fileObject, "FILE OBJECT");
   // console.log(bufferStream, "BufferStream");
   bufferStream.end(fileObject.buffer);
 
@@ -134,7 +134,7 @@ const uploadFile = async (authClient, fileObject) => {
       },
       requestBody: {
         name: fileObject.originalname,
-        parents: ["1xfk1StJ2AscqxDDoLwNj3tPRUS_dLpw5"],
+        parents: [folderId],
       },
       fields: "id,name",
     });
@@ -274,8 +274,21 @@ async function run() {
   app.post("/upload", upload.array("files"), async (req, res) => {
     // Access uploaded file via req.file
 
+    const pages = {
+      document: "1xfk1StJ2AscqxDDoLwNj3tPRUS_dLpw5",
+      drawing: "1wRElw-4faLOZWQjV4dzcQ2lHG-IhMhQd",
+      payment: "1pWE9tZrfsjiZxNORP5ZwL7Bm72S7JKpY",
+    };
+
     console.log("Aschi");
     const file = req.files;
+
+    const page = req.query.page;
+
+    const folderId = pages[page];
+
+    console.log(folderId);
+
     // console.log(file);
     if (!file) {
       return res.status(400).send({ msg: "No file uploaded." });
@@ -287,7 +300,7 @@ async function run() {
     for (let f = 0; f < file.length; f += 1) {
       promises.push(
         authorize()
-          .then((authClient) => uploadFile(authClient, file[f]))
+          .then((authClient) => uploadFile(authClient, file[f], folderId))
           .then((res) => {
             console.log(res, "RESPONSE");
             uploadFileId.push(res);
@@ -305,7 +318,7 @@ async function run() {
       .then(() => {
         // Handle the file, save it to disk, or perform other processing
         console.log("All uploads completed");
-        console.log(uploadFileId);
+        console.log(uploadFileId, "UPLOADFILEID");
         res.send({ msg: "Successfully uploaded", fileId: uploadFileId });
       })
       .catch((error) => {
