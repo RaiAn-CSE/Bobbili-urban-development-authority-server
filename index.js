@@ -289,6 +289,17 @@ async function run() {
     res.send(draftApplicationData);
   });
 
+  // get all submit application data
+  app.get("/allSubmitApplications", async (req, res) => {
+    const userId = req.query.id;
+    console.log(userId);
+
+    const result = await submitApplicationCollection.find({ userId }).toArray();
+
+    console.log(result);
+    res.send(result);
+  });
+
   // store user data
   app.post("/addUser", async (req, res) => {
     const userInfo = req.body;
@@ -470,7 +481,7 @@ async function run() {
     res.send(result);
   });
 
-  // delete specific application information
+  // delete specific application information. This is used for sending data into the department. At first the desired application data will be removed from the draft application data and stored in the submit application collection
   app.delete("/deleteApplication", async (req, res) => {
     const data = JSON.parse(req.query.data);
     console.log("Data:", data);
@@ -489,9 +500,19 @@ async function run() {
 
     console.log(searchApplicationData);
 
+    const date = new Date();
+
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+
+    const submitDate = `${day}-${month}-${year}`;
+
     const resultOfInsertData = await submitApplicationCollection.insertOne({
       ...searchApplicationData,
       userId,
+      submitDate,
+      status: "Pending at PS",
     });
 
     const resultOfDeleteData = await userCollection.updateOne(
