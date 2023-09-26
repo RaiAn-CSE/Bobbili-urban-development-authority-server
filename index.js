@@ -143,6 +143,42 @@ const uploadFile = async (authClient, fileObject, folderId) => {
   return data.id;
 };
 
+const deleteGoggleDriveFile = async (authClient, fileId) => {
+  const drive = google.drive({ version: "v3", auth: authClient }); // Authenticating drive API
+
+  // Deleting the image from Drive
+  drive.files.delete({
+    fileId: fileId,
+  });
+};
+
+const deletePreviousFile = (oldData, newData) => {
+  let fileIdArr = [];
+
+  console.log(oldData, "OldData");
+  console.log(newData, "NEW DATA");
+
+  if (newData.documents) {
+    fileIdArr = [...oldData.documents];
+  }
+  if (newData.drawing) {
+    console.log(oldData.drawing, "OLD DATA");
+    const extractOldData = oldData.drawing;
+
+    fileIdArr = Object.values(extractOldData);
+  }
+  // if (newData.payment) {
+  //   const extractOldData = oldData.payment;
+  // }
+
+  fileIdArr.length &&
+    fileIdArr.forEach((fileId) => {
+      authorize().then((authClient) =>
+        deleteGoggleDriveFile(authClient, fileId)
+      );
+    });
+};
+
 const port = process.env.PORT || 5000;
 
 app.get("/", (req, res) => {
@@ -338,6 +374,9 @@ async function run() {
     const { draftApplication: oldDraftData } = await userCollection.findOne(
       filter
     );
+
+    console.log(oldDraftData, "OLD DRAFT MAIN");
+
     // console.log(oldDraftData, "Old draft data");
 
     const findExistingData = oldDraftData.findIndex(
@@ -349,6 +388,13 @@ async function run() {
     if (findExistingData === -1) {
       oldDraftData.push(newDraftData);
     } else {
+      if (
+        newDraftData.documents ||
+        newDraftData.drawing ||
+        newDraftData.payment
+      ) {
+        deletePreviousFile(oldDraftData[findExistingData], newDraftData);
+      }
       oldDraftData[findExistingData] = {
         ...oldDraftData[findExistingData],
         ...newDraftData,
