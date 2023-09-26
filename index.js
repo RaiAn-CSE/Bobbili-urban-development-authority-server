@@ -207,6 +207,10 @@ async function run() {
     .db("Construction-Application")
     .collection("users");
 
+  const submitApplicationCollection = client
+    .db("Construction-Application")
+    .collection("submitApplication");
+
   // get users data
   app.get("/getUser", async (req, res) => {
     const id = req.query.id;
@@ -464,6 +468,40 @@ async function run() {
     );
     console.log(result);
     res.send(result);
+  });
+
+  // delete specific application information
+  app.delete("/deleteApplication", async (req, res) => {
+    const data = JSON.parse(req.query.data);
+    console.log("Data:", data);
+
+    const { userId, applicationNo } = data;
+
+    console.log(userId, "UserId");
+
+    const findApplicant = await userCollection.findOne({
+      _id: new ObjectId(userId),
+    });
+
+    const searchApplicationData = findApplicant?.draftApplication.find(
+      (application) => application.applicationNo === applicationNo
+    );
+
+    console.log(searchApplicationData);
+
+    const resultOfInsertData = await submitApplicationCollection.insertOne({
+      ...searchApplicationData,
+      userId,
+    });
+
+    const resultOfDeleteData = await userCollection.updateOne(
+      { _id: new ObjectId(`${userId}`) },
+      { $pull: { draftApplication: { applicationNo } } }
+    );
+
+    console.log(resultOfDeleteData);
+
+    res.send(resultOfDeleteData);
   });
 }
 
