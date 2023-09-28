@@ -34,7 +34,6 @@ async function authorize() {
 }
 // A Function that will upload the desired file to google drive folder
 
-const no = 1;
 // async function uploadFile(authClient) {
 //   return new Promise((resolve, rejected) => {
 //     console.log("Asci");
@@ -167,9 +166,21 @@ const deletePreviousFile = (oldData, newData) => {
 
     fileIdArr = Object.values(extractOldData);
   }
-  // if (newData.payment) {
-  //   const extractOldData = oldData.payment;
-  // }
+  if (
+    newData.payment &&
+    oldData?.gramaPanchayatFee?.gramaBankReceipt &&
+    oldData?.labourCessCharge?.labourCessBankReciept &&
+    oldData?.greenFeeCharge?.greenFeeBankReceipt
+  ) {
+    const extractOldData = [
+      oldData.gramaPanchayatFee.gramaBankReceipt,
+      oldData.labourCessCharge.labourCessBankReciept,
+      oldData.greenFeeCharge.greenFeeBankReceipt,
+    ];
+
+    fileIdArr = [...extractOldData];
+    console.log(fileIdArr, "PAYMENT");
+  }
 
   fileIdArr.length &&
     fileIdArr.forEach((fileId) => {
