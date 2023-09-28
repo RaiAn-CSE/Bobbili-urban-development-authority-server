@@ -154,6 +154,8 @@ const deleteGoggleDriveFile = async (authClient, fileId) => {
 const deletePreviousFile = (oldData, newData) => {
   let fileIdArr = [];
 
+  console.log("ASLAM");
+
   console.log(oldData, "OldData");
   console.log(newData, "NEW DATA");
 
@@ -387,6 +389,8 @@ async function run() {
         res.send({ msg: "An error occurred during uploads" });
       });
   });
+
+  app.post("/createNewApplication", async (req, res) => {});
 
   // update user draft application  data
   app.patch("/updateDraftApplicationData/:id", async (req, res) => {
