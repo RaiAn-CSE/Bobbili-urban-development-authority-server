@@ -419,8 +419,8 @@ async function run() {
       oldDraftData.push(newDraftData);
     } else {
       if (
-        newDraftData.documents ||
-        newDraftData.drawing ||
+        newDraftData.documents.length ||
+        newDraftData.drawing.length ||
         newDraftData.payment
       ) {
         deletePreviousFile(oldDraftData[findExistingData], newDraftData);
