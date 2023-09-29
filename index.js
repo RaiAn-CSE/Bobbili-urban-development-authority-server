@@ -186,9 +186,11 @@ const deletePreviousFile = (oldData, newData) => {
 
   fileIdArr.length &&
     fileIdArr.forEach((fileId) => {
-      authorize().then((authClient) =>
-        deleteGoggleDriveFile(authClient, fileId)
-      );
+      if (fileId.length) {
+        authorize().then((authClient) =>
+          deleteGoggleDriveFile(authClient, fileId)
+        );
+      }
     });
 };
 
@@ -335,7 +337,7 @@ async function run() {
     }
   });
 
-  app.post("/upload", upload.array("files"), async (req, res) => {
+  app.post("/upload", upload.single("file"), async (req, res) => {
     // Access uploaded file via req.file
 
     const pages = {
@@ -345,52 +347,30 @@ async function run() {
     };
 
     console.log("Aschi");
-    const file = req.files;
+    const file = req.file;
 
     const page = req.query.page;
 
     const folderId = pages[page];
 
-    console.log(folderId);
+    console.log(folderId, file, page);
 
     // console.log(file);
     if (!file) {
       return res.status(400).send({ msg: "No file uploaded." });
     }
 
-    const uploadFileId = [];
-    let promises = [];
-
-    for (let f = 0; f < file.length; f += 1) {
-      promises.push(
-        authorize()
-          .then((authClient) => uploadFile(authClient, file[f], folderId))
-          .then((res) => {
-            console.log(res, "RESPONSE");
-            uploadFileId.push(res);
-          })
-          .catch((err) => {
-            console.log(err);
-            res.send({ msg: "Something went wrong" });
-          })
-      );
-
-      // console.log(uploadFileId, "UPLOADFILEID");
-    }
-    // Use Promise.all to wait for all promises to resolve
-    Promise.all(promises)
-      .then(() => {
-        // Handle the file, save it to disk, or perform other processing
-        console.log("All uploads completed");
-        console.log(uploadFileId, "UPLOADFILEID");
-        res.send({ msg: "Successfully uploaded", fileId: uploadFileId });
+    authorize()
+      .then((authClient) => uploadFile(authClient, file, folderId))
+      .then((result) => {
+        console.log(result, "RESPONSE");
+        res.send({ msg: "Successfully uploaded", fileId: result });
       })
-      .catch((error) => {
-        res.send({ msg: "An error occurred during uploads" });
+      .catch((err) => {
+        console.log(err);
+        res.send({ msg: "Something went wrong" });
       });
   });
-
-  app.post("/createNewApplication", async (req, res) => {});
 
   // update user draft application  data
   app.patch("/updateDraftApplicationData/:id", async (req, res) => {
@@ -418,17 +398,15 @@ async function run() {
     if (findExistingData === -1) {
       oldDraftData.push(newDraftData);
     } else {
-      if (
-        newDraftData?.documents?.length ||
-        newDraftData?.drawing?.length ||
-        newDraftData?.payment
-      ) {
+      if (newDraftData?.drawing) {
         deletePreviousFile(oldDraftData[findExistingData], newDraftData);
       }
       oldDraftData[findExistingData] = {
         ...oldDraftData[findExistingData],
         ...newDraftData,
       };
+
+      console.log(oldDraftData[findExistingData], "FINNODJFLSDFJLDKS:J;l");
     }
 
     const updateDoc = {
