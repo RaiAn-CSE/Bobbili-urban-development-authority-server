@@ -154,39 +154,71 @@ const deleteGoggleDriveFile = async (authClient, fileId) => {
 const deletePreviousFile = (oldData, newData) => {
   let fileIdArr = [];
 
+  console.log("ASLAM");
+
   console.log(oldData, "OldData");
   console.log(newData, "NEW DATA");
 
   if (newData.documents) {
-    fileIdArr = [...oldData.documents];
+    const extractOldData = Object.values(oldData.documents);
+    const extractNewData = Object.values(newData.documents);
+
+    console.log(extractOldData, "Document OLD");
+    console.log(extractNewData, "DOCUMENT NEW");
+
+    fileIdArr = extractOldData.filter(
+      (old, index) => old !== extractNewData[index]
+    );
+
+    console.log(fileIdArr, "DOCUMENT FILE ID ARR");
   }
+
   if (newData.drawing) {
     console.log(oldData.drawing, "OLD DATA");
-    const extractOldData = oldData.drawing;
+    const extractOldData = Object.values(oldData.drawing);
+    const extractNewData = Object.values(newData.drawing);
 
-    fileIdArr = Object.values(extractOldData);
+    fileIdArr = extractOldData.filter(
+      (old, index) => old !== extractNewData[index]
+    );
+
+    console.log(fileIdArr, "DELETE FILE ID OF DRAWING");
   }
-  if (
-    newData.payment &&
-    oldData?.gramaPanchayatFee?.gramaBankReceipt &&
-    oldData?.labourCessCharge?.labourCessBankReciept &&
-    oldData?.greenFeeCharge?.greenFeeBankReceipt
-  ) {
-    const extractOldData = [
-      oldData.gramaPanchayatFee.gramaBankReceipt,
-      oldData.labourCessCharge.labourCessBankReciept,
-      oldData.greenFeeCharge.greenFeeBankReceipt,
-    ];
 
-    fileIdArr = [...extractOldData];
+  // FOR PAYMENT OLD IMAGE FILES
+  if (newData.payment) {
+    const oldDGramaFee =
+      oldData?.payment?.gramaPanchayatFee?.gramaBankReceipt ?? "";
+    const oldLabourCharge =
+      oldData?.payment?.labourCessCharge?.labourCessBankReceipt ?? "";
+    const oldGreenFee =
+      oldData?.payment?.greenFeeCharge?.greenFeeBankReceipt ?? "";
+
+    if (
+      newData?.payment?.gramaPanchayatFee?.gramaBankReceipt !== oldDGramaFee
+    ) {
+      fileIdArr.push(oldDGramaFee);
+    }
+    if (
+      newData?.payment?.labourCessCharge?.labourCessBankReceipt !==
+      oldLabourCharge
+    ) {
+      fileIdArr.push(oldLabourCharge);
+    }
+    if (newData?.payment?.greenFeeCharge?.greenFeeBankReceipt !== oldGreenFee) {
+      fileIdArr.push(oldGreenFee);
+    }
+
     console.log(fileIdArr, "PAYMENT");
   }
 
   fileIdArr.length &&
     fileIdArr.forEach((fileId) => {
-      authorize().then((authClient) =>
-        deleteGoggleDriveFile(authClient, fileId)
-      );
+      if (fileId.length) {
+        authorize().then((authClient) =>
+          deleteGoggleDriveFile(authClient, fileId)
+        );
+      }
     });
 };
 
@@ -222,6 +254,18 @@ async function run() {
     .db("Construction-Application")
     .collection("submitApplication");
 
+  const documentPageCollection = client
+    .db("Construction-Application")
+    .collection("DocumentPage");
+
+  const draftApplicationCollection = client
+    .db("Construction-Application")
+    .collection("draftApplications");
+
+  app.get("/documents", async (req, res) => {
+    const result = await documentPageCollection.find({}).toArray();
+    res.send(result);
+  });
   // get users data
   app.get("/getUser", async (req, res) => {
     const id = req.query.id;
@@ -256,11 +300,13 @@ async function run() {
     const id = req.params.id;
     console.log(id);
 
-    const { draftApplication } = await userCollection.findOne({
-      _id: new ObjectId(id),
-    });
+    const result = await draftApplicationCollection
+      .find({
+        userId: id,
+      })
+      .toArray();
 
-    res.send(draftApplication);
+    res.send(result);
   });
 
   // get specific applicationNo data
@@ -270,34 +316,40 @@ async function run() {
 
     console.log(appNo, userId);
 
-    const result = await userCollection
-      .aggregate([
-        {
-          $match: {
-            _id: new ObjectId(userId),
-            "draftApplication.applicationNo": appNo,
-          },
-        },
-        {
-          $project: {
-            draftApplication: {
-              $filter: {
-                input: "$draftApplication",
-                as: "app",
-                cond: {
-                  $eq: ["$$app.applicationNo", appNo],
-                },
-              },
-            },
-          },
-        },
-      ])
-      .toArray();
+    const filter = { userId, applicationNo: appNo };
 
-    const draftApplicationData = result[0]?.draftApplication[0];
+    console.log(filter);
 
-    console.log(draftApplicationData);
-    res.send(draftApplicationData);
+    const result = await draftApplicationCollection.findOne(filter);
+
+    // const result = await userCollection
+    //   .aggregate([
+    //     {
+    //       $match: {
+    //         _id: new ObjectId(userId),
+    //         "draftApplication.applicationNo": appNo,
+    //       },
+    //     },
+    //     {
+    //       $project: {
+    //         draftApplication: {
+    //           $filter: {
+    //             input: "$draftApplication",
+    //             as: "app",
+    //             cond: {
+    //               $eq: ["$$app.applicationNo", appNo],
+    //             },
+    //           },
+    //         },
+    //       },
+    //     },
+    //   ])
+    //   .toArray();
+
+    // const draftApplicationData = result[0]?.draftApplication[0];
+
+    console.log(result);
+    res.send(result);
   });
 
   // get all submit application data
@@ -308,6 +360,14 @@ async function run() {
     const result = await submitApplicationCollection.find({ userId }).toArray();
 
     console.log(result);
+    res.send(result);
+  });
+
+  // Store draft application in the database
+  app.post("/addApplication", async (req, res) => {
+    const data = req.body;
+    console.log(data);
+    const result = await draftApplicationCollection.insertOne(data);
     res.send(result);
   });
 
@@ -333,7 +393,7 @@ async function run() {
     }
   });
 
-  app.post("/upload", upload.array("files"), async (req, res) => {
+  app.post("/upload", upload.single("file"), async (req, res) => {
     // Access uploaded file via req.file
 
     const pages = {
@@ -343,48 +403,28 @@ async function run() {
     };
 
     console.log("Aschi");
-    const file = req.files;
+    const file = req.file;
 
     const page = req.query.page;
 
     const folderId = pages[page];
 
-    console.log(folderId);
+    console.log(folderId, file, page);
 
     // console.log(file);
     if (!file) {
       return res.status(400).send({ msg: "No file uploaded." });
     }
 
-    const uploadFileId = [];
-    let promises = [];
-
-    for (let f = 0; f < file.length; f += 1) {
-      promises.push(
-        authorize()
-          .then((authClient) => uploadFile(authClient, file[f], folderId))
-          .then((res) => {
-            console.log(res, "RESPONSE");
-            uploadFileId.push(res);
-          })
-          .catch((err) => {
-            console.log(err);
-            res.send({ msg: "Something went wrong" });
-          })
-      );
-
-      // console.log(uploadFileId, "UPLOADFILEID");
-    }
-    // Use Promise.all to wait for all promises to resolve
-    Promise.all(promises)
-      .then(() => {
-        // Handle the file, save it to disk, or perform other processing
-        console.log("All uploads completed");
-        console.log(uploadFileId, "UPLOADFILEID");
-        res.send({ msg: "Successfully uploaded", fileId: uploadFileId });
+    authorize()
+      .then((authClient) => uploadFile(authClient, file, folderId))
+      .then((result) => {
+        console.log(result, "RESPONSE");
+        res.send({ msg: "Successfully uploaded", fileId: result });
       })
-      .catch((error) => {
-        res.send({ msg: "An error occurred during uploads" });
+      .catch((err) => {
+        console.log(err);
+        res.send({ msg: "Something went wrong" });
       });
   });
 
@@ -393,50 +433,67 @@ async function run() {
     const userId = req.params.id;
     const newDraftData = req.body;
 
-    console.log(userId, "USERID", "NEW DRAFT", newDraftData);
+    const applicationNo = newDraftData?.applicationNo;
 
-    const filter = { _id: new ObjectId(userId) };
+    // console.log(userId, "USERID", "NEW DRAFT", newDraftData);
 
-    const { draftApplication: oldDraftData } = await userCollection.findOne(
-      filter
-    );
+    const filter = { userId, applicationNo };
 
-    console.log(oldDraftData, "OLD DRAFT MAIN");
+    const OldApplicationData = await draftApplicationCollection.findOne(filter);
 
-    // console.log(oldDraftData, "Old draft data");
+    // console.log(oldDraftData, "OLD DRAFT MAIN");
 
-    const findExistingData = oldDraftData.findIndex(
-      (application) => application.applicationNo === newDraftData.applicationNo
-    );
+    console.log(OldApplicationData, "Old draft data");
 
-    console.log(findExistingData, "findExistingData");
+    // const findExistingData = oldDraftData.findIndex(
+    //   (application) => application.applicationNo === newDraftData.applicationNo
+    // );
 
-    if (findExistingData === -1) {
-      oldDraftData.push(newDraftData);
-    } else {
-      if (
-        newDraftData.documents ||
-        newDraftData.drawing ||
-        newDraftData.payment
-      ) {
-        deletePreviousFile(oldDraftData[findExistingData], newDraftData);
-      }
-      oldDraftData[findExistingData] = {
-        ...oldDraftData[findExistingData],
-        ...newDraftData,
-      };
+    // console.log(findExistingData);
+
+    // console.log(findExistingData, "findExistingData");
+
+    // if (findExistingData === -1) {
+    //   oldDraftData.push(newDraftData);
+    // } else {
+    //   if (
+    //     newDraftData?.drawing ||
+    //     newDraftData?.payment ||
+    //     newDraftData?.documents
+    //   ) {
+    //     deletePreviousFile(oldDraftData[findExistingData], newDraftData);
+    //   }
+    //   oldDraftData[findExistingData] = {
+    //     ...oldDraftData[findExistingData],
+    //     ...newDraftData,
+    //   };
+
+    //   // console.log(oldDraftData[findExistingData], "FINNODJFLSDFJLDKS:J;l");
+    // }
+
+    if (
+      newDraftData?.drawing ||
+      newDraftData?.payment ||
+      newDraftData?.documents
+    ) {
+      deletePreviousFile(OldApplicationData, newDraftData);
     }
+    const updatedData = {
+      ...OldApplicationData,
+      ...newDraftData,
+    };
 
     const updateDoc = {
-      $set: {
-        draftApplication: oldDraftData,
-      },
+      $set: updatedData,
     };
 
     // console.log(oldDraftData[findExistingData]);
     // console.log(newDraftData);
 
-    const result = await userCollection.updateOne(filter, updateDoc);
+    const result = await draftApplicationCollection.updateOne(
+      filter,
+      updateDoc
+    );
 
     res.send(result);
   });
@@ -484,12 +541,17 @@ async function run() {
 
     // const userInfo = await userCollection.findOne({ _id: ObjectId(userID) });
 
-    const result = await userCollection.updateOne(
-      { _id: new ObjectId(`${userID}`) },
-      { $pull: { draftApplication: { applicationNo } } }
-    );
-    console.log(result);
-    res.send(result);
+    // const result = await userCollection.updateOne(
+    //   { _id: new ObjectId(`${userID}`) },
+    //   { $pull: { draftApplication: { applicationNo } } }
+    // );
+
+    const removeApplication = await draftApplicationCollection.deleteOne({
+      userId: userID,
+      applicationNo,
+    });
+
+    res.send(removeApplication);
   });
 
   // delete specific application information. This is used for sending data into the department. At first the desired application data will be removed from the draft application data and stored in the submit application collection
@@ -501,15 +563,16 @@ async function run() {
 
     console.log(userId, "UserId");
 
-    const findApplicant = await userCollection.findOne({
-      _id: new ObjectId(userId),
+    const findApplication = await draftApplicationCollection.findOne({
+      userId,
+      applicationNo,
     });
 
-    const searchApplicationData = findApplicant?.draftApplication.find(
-      (application) => application.applicationNo === applicationNo
-    );
+    // const searchApplicationData = findApplicant?.draftApplication.find(
+    //   (application) => application.applicationNo === applicationNo
+    // );
 
-    console.log(searchApplicationData);
+    console.log(findApplication);
 
     const date = new Date();
 
@@ -520,16 +583,20 @@ async function run() {
     const submitDate = `${day}-${month}-${year}`;
 
     const resultOfInsertData = await submitApplicationCollection.insertOne({
-      ...searchApplicationData,
-      userId,
+      ...findApplication,
       submitDate,
       status: "Pending at PS",
     });
 
-    const resultOfDeleteData = await userCollection.updateOne(
-      { _id: new ObjectId(`${userId}`) },
-      { $pull: { draftApplication: { applicationNo } } }
-    );
+    // const resultOfDeleteData = await userCollection.updateOne(
+    //   { _id: new ObjectId(`${userId}`) },
+    //   { $pull: { draftApplication: { applicationNo } } }
+    // );
+
+    const resultOfDeleteData = await draftApplicationCollection.deleteOne({
+      userId,
+      applicationNo,
+    });
 
     console.log(resultOfDeleteData);
 
