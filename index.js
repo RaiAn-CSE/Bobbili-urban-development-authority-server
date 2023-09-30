@@ -258,6 +258,10 @@ async function run() {
     .db("Construction-Application")
     .collection("DocumentPage");
 
+  const draftApplicationCollection = client
+    .db("Construction-Application")
+    .collection("draftApplications");
+
   app.get("/documents", async (req, res) => {
     const result = await documentPageCollection.find({}).toArray();
     res.send(result);
@@ -296,11 +300,13 @@ async function run() {
     const id = req.params.id;
     console.log(id);
 
-    const { draftApplication } = await userCollection.findOne({
-      _id: new ObjectId(id),
-    });
+    const result = await draftApplicationCollection
+      .find({
+        userId: id,
+      })
+      .toArray();
 
-    res.send(draftApplication);
+    res.send(result);
   });
 
   // get specific applicationNo data
@@ -310,34 +316,40 @@ async function run() {
 
     console.log(appNo, userId);
 
-    const result = await userCollection
-      .aggregate([
-        {
-          $match: {
-            _id: new ObjectId(userId),
-            "draftApplication.applicationNo": appNo,
-          },
-        },
-        {
-          $project: {
-            draftApplication: {
-              $filter: {
-                input: "$draftApplication",
-                as: "app",
-                cond: {
-                  $eq: ["$$app.applicationNo", appNo],
-                },
-              },
-            },
-          },
-        },
-      ])
-      .toArray();
+    const filter = { userId, applicationNo: appNo };
 
-    const draftApplicationData = result[0]?.draftApplication[0];
+    console.log(filter);
 
-    console.log(draftApplicationData);
-    res.send(draftApplicationData);
+    const result = await draftApplicationCollection.findOne(filter);
+
+    // const result = await userCollection
+    //   .aggregate([
+    //     {
+    //       $match: {
+    //         _id: new ObjectId(userId),
+    //         "draftApplication.applicationNo": appNo,
+    //       },
+    //     },
+    //     {
+    //       $project: {
+    //         draftApplication: {
+    //           $filter: {
+    //             input: "$draftApplication",
+    //             as: "app",
+    //             cond: {
+    //               $eq: ["$$app.applicationNo", appNo],
+    //             },
+    //           },
+    //         },
+    //       },
+    //     },
+    //   ])
+    //   .toArray();
+
+    // const draftApplicationData = result[0]?.draftApplication[0];
+
+    console.log(result);
+    res.send(result);
   });
 
   // get all submit application data
@@ -348,6 +360,14 @@ async function run() {
     const result = await submitApplicationCollection.find({ userId }).toArray();
 
     console.log(result);
+    res.send(result);
+  });
+
+  // Store draft application in the database
+  app.post("/addApplication", async (req, res) => {
+    const data = req.body;
+    console.log(data);
+    const result = await draftApplicationCollection.insertOne(data);
     res.send(result);
   });
 
@@ -413,52 +433,67 @@ async function run() {
     const userId = req.params.id;
     const newDraftData = req.body;
 
+    const applicationNo = newDraftData?.applicationNo;
+
     // console.log(userId, "USERID", "NEW DRAFT", newDraftData);
 
-    const filter = { _id: new ObjectId(userId) };
+    const filter = { userId, applicationNo };
 
-    const { draftApplication: oldDraftData } = await userCollection.findOne(
-      filter
-    );
+    const OldApplicationData = await draftApplicationCollection.findOne(filter);
 
     // console.log(oldDraftData, "OLD DRAFT MAIN");
 
-    // console.log(oldDraftData, "Old draft data");
+    console.log(OldApplicationData, "Old draft data");
 
-    const findExistingData = oldDraftData.findIndex(
-      (application) => application.applicationNo === newDraftData.applicationNo
-    );
+    // const findExistingData = oldDraftData.findIndex(
+    //   (application) => application.applicationNo === newDraftData.applicationNo
+    // );
+
+    // console.log(findExistingData);
 
     // console.log(findExistingData, "findExistingData");
 
-    if (findExistingData === -1) {
-      oldDraftData.push(newDraftData);
-    } else {
-      if (
-        newDraftData?.drawing ||
-        newDraftData?.payment ||
-        newDraftData?.documents
-      ) {
-        deletePreviousFile(oldDraftData[findExistingData], newDraftData);
-      }
-      oldDraftData[findExistingData] = {
-        ...oldDraftData[findExistingData],
-        ...newDraftData,
-      };
+    // if (findExistingData === -1) {
+    //   oldDraftData.push(newDraftData);
+    // } else {
+    //   if (
+    //     newDraftData?.drawing ||
+    //     newDraftData?.payment ||
+    //     newDraftData?.documents
+    //   ) {
+    //     deletePreviousFile(oldDraftData[findExistingData], newDraftData);
+    //   }
+    //   oldDraftData[findExistingData] = {
+    //     ...oldDraftData[findExistingData],
+    //     ...newDraftData,
+    //   };
 
-      // console.log(oldDraftData[findExistingData], "FINNODJFLSDFJLDKS:J;l");
+    //   // console.log(oldDraftData[findExistingData], "FINNODJFLSDFJLDKS:J;l");
+    // }
+
+    if (
+      newDraftData?.drawing ||
+      newDraftData?.payment ||
+      newDraftData?.documents
+    ) {
+      deletePreviousFile(OldApplicationData, newDraftData);
     }
+    const updatedData = {
+      ...OldApplicationData,
+      ...newDraftData,
+    };
 
     const updateDoc = {
-      $set: {
-        draftApplication: oldDraftData,
-      },
+      $set: updatedData,
     };
 
     // console.log(oldDraftData[findExistingData]);
     // console.log(newDraftData);
 
-    const result = await userCollection.updateOne(filter, updateDoc);
+    const result = await draftApplicationCollection.updateOne(
+      filter,
+      updateDoc
+    );
 
     res.send(result);
   });
@@ -506,12 +541,17 @@ async function run() {
 
     // const userInfo = await userCollection.findOne({ _id: ObjectId(userID) });
 
-    const result = await userCollection.updateOne(
-      { _id: new ObjectId(`${userID}`) },
-      { $pull: { draftApplication: { applicationNo } } }
-    );
-    console.log(result);
-    res.send(result);
+    // const result = await userCollection.updateOne(
+    //   { _id: new ObjectId(`${userID}`) },
+    //   { $pull: { draftApplication: { applicationNo } } }
+    // );
+
+    const removeApplication = await draftApplicationCollection.deleteOne({
+      userId: userID,
+      applicationNo,
+    });
+
+    res.send(removeApplication);
   });
 
   // delete specific application information. This is used for sending data into the department. At first the desired application data will be removed from the draft application data and stored in the submit application collection
@@ -523,15 +563,16 @@ async function run() {
 
     console.log(userId, "UserId");
 
-    const findApplicant = await userCollection.findOne({
-      _id: new ObjectId(userId),
+    const findApplication = await draftApplicationCollection.findOne({
+      userId,
+      applicationNo,
     });
 
-    const searchApplicationData = findApplicant?.draftApplication.find(
-      (application) => application.applicationNo === applicationNo
-    );
+    // const searchApplicationData = findApplicant?.draftApplication.find(
+    //   (application) => application.applicationNo === applicationNo
+    // );
 
-    console.log(searchApplicationData);
+    console.log(findApplication);
 
     const date = new Date();
 
@@ -542,16 +583,20 @@ async function run() {
     const submitDate = `${day}-${month}-${year}`;
 
     const resultOfInsertData = await submitApplicationCollection.insertOne({
-      ...searchApplicationData,
-      userId,
+      ...findApplication,
       submitDate,
       status: "Pending at PS",
     });
 
-    const resultOfDeleteData = await userCollection.updateOne(
-      { _id: new ObjectId(`${userId}`) },
-      { $pull: { draftApplication: { applicationNo } } }
-    );
+    // const resultOfDeleteData = await userCollection.updateOne(
+    //   { _id: new ObjectId(`${userId}`) },
+    //   { $pull: { draftApplication: { applicationNo } } }
+    // );
+
+    const resultOfDeleteData = await draftApplicationCollection.deleteOne({
+      userId,
+      applicationNo,
+    });
 
     console.log(resultOfDeleteData);
 
