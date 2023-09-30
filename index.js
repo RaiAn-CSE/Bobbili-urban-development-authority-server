@@ -160,7 +160,17 @@ const deletePreviousFile = (oldData, newData) => {
   console.log(newData, "NEW DATA");
 
   if (newData.documents) {
-    fileIdArr = [...oldData.documents];
+    const extractOldData = Object.values(oldData.documents);
+    const extractNewData = Object.values(newData.documents);
+
+    console.log(extractOldData, "Document OLD");
+    console.log(extractNewData, "DOCUMENT NEW");
+
+    fileIdArr = extractOldData.filter(
+      (old, index) => old !== extractNewData[index]
+    );
+
+    console.log(fileIdArr, "DOCUMENT FILE ID ARR");
   }
 
   if (newData.drawing) {
@@ -244,6 +254,14 @@ async function run() {
     .db("Construction-Application")
     .collection("submitApplication");
 
+  const documentPageCollection = client
+    .db("Construction-Application")
+    .collection("DocumentPage");
+
+  app.get("/documents", async (req, res) => {
+    const result = await documentPageCollection.find({}).toArray();
+    res.send(result);
+  });
   // get users data
   app.get("/getUser", async (req, res) => {
     const id = req.query.id;
@@ -395,7 +413,7 @@ async function run() {
     const userId = req.params.id;
     const newDraftData = req.body;
 
-    console.log(userId, "USERID", "NEW DRAFT", newDraftData);
+    // console.log(userId, "USERID", "NEW DRAFT", newDraftData);
 
     const filter = { _id: new ObjectId(userId) };
 
@@ -403,7 +421,7 @@ async function run() {
       filter
     );
 
-    console.log(oldDraftData, "OLD DRAFT MAIN");
+    // console.log(oldDraftData, "OLD DRAFT MAIN");
 
     // console.log(oldDraftData, "Old draft data");
 
@@ -411,12 +429,16 @@ async function run() {
       (application) => application.applicationNo === newDraftData.applicationNo
     );
 
-    console.log(findExistingData, "findExistingData");
+    // console.log(findExistingData, "findExistingData");
 
     if (findExistingData === -1) {
       oldDraftData.push(newDraftData);
     } else {
-      if (newDraftData?.drawing || newDraftData?.payment) {
+      if (
+        newDraftData?.drawing ||
+        newDraftData?.payment ||
+        newDraftData?.documents
+      ) {
         deletePreviousFile(oldDraftData[findExistingData], newDraftData);
       }
       oldDraftData[findExistingData] = {
@@ -424,7 +446,7 @@ async function run() {
         ...newDraftData,
       };
 
-      console.log(oldDraftData[findExistingData], "FINNODJFLSDFJLDKS:J;l");
+      // console.log(oldDraftData[findExistingData], "FINNODJFLSDFJLDKS:J;l");
     }
 
     const updateDoc = {
