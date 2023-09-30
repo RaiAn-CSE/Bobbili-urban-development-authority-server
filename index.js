@@ -162,25 +162,43 @@ const deletePreviousFile = (oldData, newData) => {
   if (newData.documents) {
     fileIdArr = [...oldData.documents];
   }
+
   if (newData.drawing) {
     console.log(oldData.drawing, "OLD DATA");
-    const extractOldData = oldData.drawing;
+    const extractOldData = Object.values(oldData.drawing);
+    const extractNewData = Object.values(newData.drawing);
 
-    fileIdArr = Object.values(extractOldData);
+    fileIdArr = extractOldData.filter(
+      (old, index) => old !== extractNewData[index]
+    );
+
+    console.log(fileIdArr, "DELETE FILE ID OF DRAWING");
   }
-  if (
-    newData.payment &&
-    oldData?.gramaPanchayatFee?.gramaBankReceipt &&
-    oldData?.labourCessCharge?.labourCessBankReciept &&
-    oldData?.greenFeeCharge?.greenFeeBankReceipt
-  ) {
-    const extractOldData = [
-      oldData.gramaPanchayatFee.gramaBankReceipt,
-      oldData.labourCessCharge.labourCessBankReciept,
-      oldData.greenFeeCharge.greenFeeBankReceipt,
-    ];
 
-    fileIdArr = [...extractOldData];
+  // FOR PAYMENT OLD IMAGE FILES
+  if (newData.payment) {
+    const oldDGramaFee =
+      oldData?.payment?.gramaPanchayatFee?.gramaBankReceipt ?? "";
+    const oldLabourCharge =
+      oldData?.payment?.labourCessCharge?.labourCessBankReceipt ?? "";
+    const oldGreenFee =
+      oldData?.payment?.greenFeeCharge?.greenFeeBankReceipt ?? "";
+
+    if (
+      newData?.payment?.gramaPanchayatFee?.gramaBankReceipt !== oldDGramaFee
+    ) {
+      fileIdArr.push(oldDGramaFee);
+    }
+    if (
+      newData?.payment?.labourCessCharge?.labourCessBankReceipt !==
+      oldLabourCharge
+    ) {
+      fileIdArr.push(oldLabourCharge);
+    }
+    if (newData?.payment?.greenFeeCharge?.greenFeeBankReceipt !== oldGreenFee) {
+      fileIdArr.push(oldGreenFee);
+    }
+
     console.log(fileIdArr, "PAYMENT");
   }
 
@@ -398,7 +416,7 @@ async function run() {
     if (findExistingData === -1) {
       oldDraftData.push(newDraftData);
     } else {
-      if (newDraftData?.drawing) {
+      if (newDraftData?.drawing || newDraftData?.payment) {
         deletePreviousFile(oldDraftData[findExistingData], newDraftData);
       }
       oldDraftData[findExistingData] = {
