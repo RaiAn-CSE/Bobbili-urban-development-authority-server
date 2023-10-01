@@ -316,17 +316,17 @@ async function run() {
 
     console.log(appNo, userId);
 
-    const filter = { userId, applicationNo: appNo };
-
-    console.log(filter);
     let result;
-    if (role == "PS") {
-      result = await submitApplicationCollection.findOne(filter);
+    if (role === "PS") {
+      result = await submitApplicationCollection.findOne({
+        applicationNo: appNo,
+      });
+    } else if (role === "LTP") {
+      result = await draftApplicationCollection.findOne({
+        userId,
+        applicationNo: appNo,
+      });
     }
-    else if (role == "LTP") {
-      result = await draftApplicationCollection.findOne(filter);
-    }
-
 
     // const result = await userCollection
     //   .aggregate([
@@ -358,6 +358,49 @@ async function run() {
     res.send(result);
   });
 
+  // get specific applicationNo data
+  // app.get("/getApplicationData", async (req, res) => {
+  //   const { appNo, userId } = JSON.parse(req.query.data);
+  //   console.log(req.query.data);
+
+  //   console.log(appNo, userId);
+
+  //   const filter = { userId, applicationNo: appNo };
+
+  //   console.log(filter);
+
+  //   const result = await draftApplicationCollection.findOne(filter);
+
+  //   // const result = await userCollection
+  //   //   .aggregate([
+  //   //     {
+  //   //       $match: {
+  //   //         _id: new ObjectId(userId),
+  //   //         "draftApplication.applicationNo": appNo,
+  //   //       },
+  //   //     },
+  //   //     {
+  //   //       $project: {
+  //   //         draftApplication: {
+  //   //           $filter: {
+  //   //             input: "$draftApplication",
+  //   //             as: "app",
+  //   //             cond: {
+  //   //               $eq: ["$$app.applicationNo", appNo],
+  //   //             },
+  //   //           },
+  //   //         },
+  //   //       },
+  //   //     },
+  //   //   ])
+  //   //   .toArray();
+
+  //   // const draftApplicationData = result[0]?.draftApplication[0];
+
+  //   console.log(result);
+  //   res.send(result);
+  // });
+
   // get all submit application data
   app.get("/allSubmitApplications", async (req, res) => {
     const userId = req.query.id;
@@ -370,12 +413,10 @@ async function run() {
   });
 
   // get all submit application data for PS
-  app.get("/allSubmitApplication", async (req, res) => {
+  app.get("/submitApplications", async (req, res) => {
     const result = await submitApplicationCollection.find({}).toArray();
     res.send(result);
   });
-
-
 
   // Store draft application in the database
   app.post("/addApplication", async (req, res) => {
