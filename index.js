@@ -311,7 +311,7 @@ async function run() {
 
   // get specific applicationNo data
   app.get("/getApplicationData", async (req, res) => {
-    const { appNo, userId } = JSON.parse(req.query.data);
+    const { appNo, userId, role } = JSON.parse(req.query.data);
     console.log(req.query.data);
 
     console.log(appNo, userId);
@@ -319,8 +319,14 @@ async function run() {
     const filter = { userId, applicationNo: appNo };
 
     console.log(filter);
+    let result;
+    if (role == "PS") {
+      result = await submitApplicationCollection.findOne(filter);
+    }
+    else if (role == "LTP") {
+      result = await draftApplicationCollection.findOne(filter);
+    }
 
-    const result = await draftApplicationCollection.findOne(filter);
 
     // const result = await userCollection
     //   .aggregate([
@@ -362,6 +368,14 @@ async function run() {
     console.log(result);
     res.send(result);
   });
+
+  // get all submit application data for PS
+  app.get("/allSubmitApplication", async (req, res) => {
+    const result = await submitApplicationCollection.find({}).toArray();
+    res.send(result);
+  });
+
+
 
   // Store draft application in the database
   app.post("/addApplication", async (req, res) => {
