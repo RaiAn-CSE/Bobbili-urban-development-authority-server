@@ -558,9 +558,8 @@ async function run() {
 
     const appNo = req.query.appNo;
 
-    // console.log(appNo);
-
-    const siteInspection = req.body;
+    const newData = req.body;
+    console.log(newData);
 
     const filter = {
       applicationNo: appNo,
@@ -570,12 +569,12 @@ async function run() {
 
     // console.log(findApplication, "Find application");
 
-    findApplication["siteInspection"] = siteInspection;
+    const updateData = { ...findApplication, ...newData };
 
     console.log(findApplication, "findApplication");
 
     const updateDoc = {
-      $set: findApplication,
+      $set: updateData,
     };
 
     // console.log(oldDraftData[findExistingData]);
