@@ -553,6 +553,42 @@ async function run() {
     res.send(result);
   });
 
+  app.patch("/recommendDataOfPs", async (req, res) => {
+    // console.log(req.body, "req body");
+
+    const appNo = req.query.appNo;
+
+    // console.log(appNo);
+
+    const siteInspection = req.body;
+
+    const filter = {
+      applicationNo: appNo,
+    };
+
+    const findApplication = await submitApplicationCollection.findOne(filter);
+
+    // console.log(findApplication, "Find application");
+
+    findApplication["siteInspection"] = siteInspection;
+
+    console.log(findApplication, "findApplication");
+
+    const updateDoc = {
+      $set: findApplication,
+    };
+
+    // console.log(oldDraftData[findExistingData]);
+    // console.log(newDraftData);
+
+    const result = await submitApplicationCollection.updateOne(
+      filter,
+      updateDoc
+    );
+
+    res.send(result);
+  });
+
   // update user information
   app.patch("/updateUserInfo/:id", async (req, res) => {
     const id = req.params.id;
