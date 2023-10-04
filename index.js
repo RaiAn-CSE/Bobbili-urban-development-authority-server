@@ -712,6 +712,16 @@ async function run() {
 
     res.send(resultOfDeleteData);
   });
+
+  app.delete("/submitPsDecision", async (req, res) => {
+    const appNo = req.query.appNo;
+    // console.log(appNo);
+
+    const findApplication = await submitApplicationCollection.findOne({
+      applicationNo: appNo,
+    });
+    console.log(findApplication, "findApplication");
+  });
 }
 
 run().catch(console.dir);
