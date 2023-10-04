@@ -358,6 +358,12 @@ async function run() {
     res.send(result);
   });
 
+  //get all draft application data
+  app.get("/allDraftApplicationData", async (req, res) => {
+    const result = await draftApplicationCollection.find({}).toArray();
+    res.send(result);
+  });
+
   // get specific applicationNo data
   // app.get("/getApplicationData", async (req, res) => {
   //   const { appNo, userId } = JSON.parse(req.query.data);
