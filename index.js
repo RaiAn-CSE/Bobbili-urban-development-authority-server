@@ -418,6 +418,20 @@ async function run() {
     res.send(result);
   });
 
+  // get data from the submit application
+  app.get("/getSubmitDataOfPs", async (req, res) => {
+    const { appNo } = JSON.parse(req.query.appNo);
+
+    console.log(appNo, "APPLICATION NO");
+
+    const result = await submitApplicationCollection.findOne({
+      applicationNo: appNo,
+    });
+
+    console.log(result, "Find");
+    res.send(result);
+  });
+
   // Store draft application in the database
   app.post("/addApplication", async (req, res) => {
     const data = req.body;
