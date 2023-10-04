@@ -358,6 +358,12 @@ async function run() {
     res.send(result);
   });
 
+  //get all draft application data
+  app.get("/allDraftApplicationData", async (req, res) => {
+    const result = await draftApplicationCollection.find({}).toArray();
+    res.send(result);
+  });
+
   // get specific applicationNo data
   // app.get("/getApplicationData", async (req, res) => {
   //   const { appNo, userId } = JSON.parse(req.query.data);
@@ -415,6 +421,20 @@ async function run() {
   // get all submit application data for PS
   app.get("/submitApplications", async (req, res) => {
     const result = await submitApplicationCollection.find({}).toArray();
+    res.send(result);
+  });
+
+  // get data from the submit application
+  app.get("/getSubmitDataOfPs", async (req, res) => {
+    const { appNo } = JSON.parse(req.query.appNo);
+
+    console.log(appNo, "APPLICATION NO");
+
+    const result = await submitApplicationCollection.findOne({
+      applicationNo: appNo,
+    });
+
+    console.log(result, "Find");
     res.send(result);
   });
 
@@ -691,6 +711,16 @@ async function run() {
     console.log(resultOfDeleteData);
 
     res.send(resultOfDeleteData);
+  });
+
+  app.delete("/submitPsDecision", async (req, res) => {
+    const appNo = req.query.appNo;
+    // console.log(appNo);
+
+    const findApplication = await submitApplicationCollection.findOne({
+      applicationNo: appNo,
+    });
+    console.log(findApplication, "findApplication");
   });
 }
 
