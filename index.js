@@ -562,7 +562,7 @@ async function run() {
       );
 
       if (result.acknowledged) {
-        return;
+        return result.acknowledged;
       }
     };
 
@@ -573,16 +573,26 @@ async function run() {
       siteInspectionPageDecision
     ) {
       const psSubmitData = { psSubmitDate, status: "approved" };
-      updateStatusOfApplication(psSubmitData);
+      const updateStatus = updateStatusOfApplication(psSubmitData);
 
       console.log("Approved");
 
-      result = await approvedCollection.insertOne(findApplication);
+      if (updateStatus) {
+        const findApplication = await submitApplicationCollection.findOne(
+          filter
+        );
+        result = await approvedCollection.insertOne(findApplication);
+      }
     } else {
       console.log("Shortfall");
       const psSubmitData = { psSubmitDate, status: "shortfall" };
-      updateStatusOfApplication(psSubmitData);
-      result = await shortfallCollection.insertOne(findApplication);
+      const updateStatus = updateStatusOfApplication(psSubmitData);
+      if (updateStatus) {
+        const findApplication = await submitApplicationCollection.findOne(
+          filter
+        );
+        result = await shortfallCollection.insertOne(findApplication);
+      }
     }
 
     const deleteData = await submitApplicationCollection.deleteOne(filter);
