@@ -509,7 +509,7 @@ async function run() {
       });
   });
 
-  app.post("/decisionOfPs", async (req, res) => {
+  app.delete("/decisionOfPs", async (req, res) => {
     const appNo = req.query.appNo;
 
     const filter = {
@@ -528,28 +528,30 @@ async function run() {
 
     const psSubmitDate = `${day}-${month}-${year}`;
 
-    console.log(psSubmitDate);
+    // console.log(psSubmitDate);
 
     const documentPageDecision =
-      findApplication?.psDocumentPageObservation?.approved;
+      findApplication?.psDocumentPageObservation?.approved === "true" ? 1 : 0;
 
     const drawingPageDecision =
-      findApplication?.psDrawingPageObservation?.approved;
+      findApplication?.psDrawingPageObservation?.approved === "true" ? 1 : 0;
 
     const siteInspectionPageDecision =
       findApplication?.siteInspection?.decision?.toLowerCase() === "approved"
         ? 1
         : 0;
 
-    console.log(
-      documentPageDecision,
-      drawingPageDecision,
-      siteInspectionPageDecision
-    );
+    // console.log(
+    //   documentPageDecision,
+    //   drawingPageDecision,
+    //   siteInspectionPageDecision
+    // );
 
     // update application status
     const updateStatusOfApplication = async (psSubmitData) => {
       const updateData = { ...findApplication, ...psSubmitData };
+
+      console.log(updateData, "updateDoc");
       const updateDoc = {
         $set: updateData,
       };
@@ -558,12 +560,16 @@ async function run() {
         filter,
         updateDoc
       );
+
+      if (result.acknowledged) {
+        return;
+      }
     };
 
     let result;
     if (
-      Boolean(documentPageDecision) &&
-      Boolean(drawingPageDecision) &&
+      documentPageDecision &&
+      drawingPageDecision &&
       siteInspectionPageDecision
     ) {
       const psSubmitData = { psSubmitDate, status: "approved" };
@@ -580,6 +586,8 @@ async function run() {
     }
 
     const deleteData = await submitApplicationCollection.deleteOne(filter);
+
+    console.log(result);
     res.send(result);
   });
 
