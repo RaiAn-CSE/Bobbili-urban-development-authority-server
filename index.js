@@ -261,6 +261,12 @@ async function run() {
   const draftApplicationCollection = client
     .db("Construction-Application")
     .collection("draftApplications");
+  const approvedCollection = client
+    .db("Construction-Application")
+    .collection("approvedApplication");
+  const shortfallCollection = client
+    .db("Construction-Application")
+    .collection("shortfallApplication");
 
   app.get("/documents", async (req, res) => {
     const result = await documentPageCollection.find({}).toArray();
@@ -503,6 +509,80 @@ async function run() {
       });
   });
 
+  app.post("/decisionOfPs", async (req, res) => {
+    const appNo = req.query.appNo;
+
+    const filter = {
+      applicationNo: appNo,
+    };
+
+    const findApplication = await submitApplicationCollection.findOne(filter);
+
+    const date = new Date();
+
+    const day = date.getDate().toString().padStart(2, "0");
+
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+
+    const year = date.getFullYear();
+
+    const psSubmitDate = `${day}-${month}-${year}`;
+
+    console.log(psSubmitDate);
+
+    const documentPageDecision =
+      findApplication?.psDocumentPageObservation?.approved;
+
+    const drawingPageDecision =
+      findApplication?.psDrawingPageObservation?.approved;
+
+    const siteInspectionPageDecision =
+      findApplication?.siteInspection?.decision?.toLowerCase() === "approved"
+        ? 1
+        : 0;
+
+    console.log(
+      documentPageDecision,
+      drawingPageDecision,
+      siteInspectionPageDecision
+    );
+
+    // update application status
+    const updateStatusOfApplication = async (psSubmitData) => {
+      const updateData = { ...findApplication, ...psSubmitData };
+      const updateDoc = {
+        $set: updateData,
+      };
+
+      const result = await submitApplicationCollection.updateOne(
+        filter,
+        updateDoc
+      );
+    };
+
+    let result;
+    if (
+      Boolean(documentPageDecision) &&
+      Boolean(drawingPageDecision) &&
+      siteInspectionPageDecision
+    ) {
+      const psSubmitData = { psSubmitDate, status: "approved" };
+      updateStatusOfApplication(psSubmitData);
+
+      console.log("Approved");
+
+      result = await approvedCollection.insertOne(findApplication);
+    } else {
+      console.log("Shortfall");
+      const psSubmitData = { psSubmitDate, status: "shortfall" };
+      updateStatusOfApplication(psSubmitData);
+      result = await shortfallCollection.insertOne(findApplication);
+    }
+
+    const deleteData = await submitApplicationCollection.deleteOne(filter);
+    res.send(result);
+  });
+
   // update user draft application  data
   app.patch("/updateDraftApplicationData/:id", async (req, res) => {
     const userId = req.params.id;
@@ -591,7 +671,7 @@ async function run() {
 
     const updateData = { ...findApplication, ...newData };
 
-    console.log(findApplication, "findApplication");
+    // console.log(findApplication, "findApplication");
 
     const updateDoc = {
       $set: updateData,
