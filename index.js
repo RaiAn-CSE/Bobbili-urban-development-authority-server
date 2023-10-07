@@ -424,6 +424,30 @@ async function run() {
     res.send(result);
   });
 
+  // get application data
+
+  app.get("/allPageWiseApplications", async (req, res) => {
+    const { userId, searchApplicationName } = JSON.parse(req.query.data);
+
+    console.log(userId, searchApplicationName);
+
+    let result;
+    if (searchApplicationName === "Submit Applications") {
+      result = await submitApplicationCollection.find({ userId }).toArray();
+    }
+    if (searchApplicationName === "Approved Applications") {
+      result = await approvedCollection.find({ userId }).toArray();
+    }
+    if (searchApplicationName === "Shortfall Applications") {
+      console.log("Shortfall");
+      result = await shortfallCollection.find({ userId }).toArray();
+    }
+
+    // console.log(result, "result");
+
+    res.send(result);
+  });
+
   // get all submit application data for PS
   app.get("/submitApplications", async (req, res) => {
     const result = await submitApplicationCollection.find({}).toArray();
@@ -548,7 +572,7 @@ async function run() {
     // );
 
     // update application status
-    const updateStatusOfApplication = async (psSubmitData) => {
+    const updateStatusOfApplication = async (psSubmitData, isApproved) => {
       const updateData = { ...findApplication, ...psSubmitData };
 
       console.log(updateData, "updateDoc");
@@ -562,43 +586,57 @@ async function run() {
       );
 
       if (result.acknowledged) {
-        return result.acknowledged;
+        const findApplication = await submitApplicationCollection.findOne(
+          filter
+        );
+
+        console.log(findApplication, "AFTER SUBMITTED DATA");
+
+        let insertedData;
+
+        if (isApproved) {
+          insertedData = await approvedCollection.insertOne(findApplication);
+        } else {
+          insertedData = await shortfallCollection.insertOne(findApplication);
+        }
+
+        const deleteData = await submitApplicationCollection.deleteOne(filter);
+
+        res.send(insertedData);
+      } else {
+        res.send({ statusText: "Server Error" });
       }
     };
 
-    let result;
     if (
       documentPageDecision &&
       drawingPageDecision &&
       siteInspectionPageDecision
     ) {
       const psSubmitData = { psSubmitDate, status: "approved" };
-      const updateStatus = updateStatusOfApplication(psSubmitData);
-
       console.log("Approved");
+      updateStatusOfApplication(psSubmitData, 1);
 
-      if (updateStatus) {
-        const findApplication = await submitApplicationCollection.findOne(
-          filter
-        );
-        result = await approvedCollection.insertOne(findApplication);
-      }
+      // if (updateStatus) {
+      //   const findApplication = await submitApplicationCollection.findOne(
+      //     filter
+      //   );
+      //   result = await approvedCollection.insertOne(findApplication);
+      // }
     } else {
       console.log("Shortfall");
       const psSubmitData = { psSubmitDate, status: "shortfall" };
-      const updateStatus = updateStatusOfApplication(psSubmitData);
-      if (updateStatus) {
-        const findApplication = await submitApplicationCollection.findOne(
-          filter
-        );
-        result = await shortfallCollection.insertOne(findApplication);
-      }
+      updateStatusOfApplication(psSubmitData, 0);
+      // if (updateStatus) {
+      //   const findApplication = await submitApplicationCollection.findOne(
+      //     filter
+      //   );
+      //   result = await shortfallCollection.insertOne(findApplication);
+      // }
     }
 
-    const deleteData = await submitApplicationCollection.deleteOne(filter);
-
-    console.log(result);
-    res.send(result);
+    // console.log(result);
+    // res.send(result);
   });
 
   // update user draft application  data
