@@ -468,6 +468,41 @@ async function run() {
     res.send(result);
   });
 
+  //get serial number
+  app.get("/getSerialNumber", async (req, res) => {
+    // get all collections applications
+    const draftApplications = await draftApplicationCollection
+      .find({})
+      .toArray();
+    const submittedApplications = await submitApplicationCollection
+      .find({})
+      .toArray();
+    const approvedApplications = await approvedCollection.find({}).toArray();
+    const shortfallApplications = await shortfallCollection.find({}).toArray();
+
+    const allApplications = [
+      ...draftApplications,
+      ...submittedApplications,
+      ...approvedApplications,
+      ...shortfallApplications,
+    ];
+
+    if (allApplications?.length) {
+      let applicationNumbers = allApplications.map((application) => {
+        return Number(application?.applicationNo.split("/")[1]);
+      });
+
+      applicationNumbers = applicationNumbers.sort(function (a, b) {
+        return a - b;
+      });
+
+      const lastSerialNumber = Math.max(...applicationNumbers);
+      res.send({ serialNo: lastSerialNumber + 1 });
+    } else {
+      res.send({ serialNo: 1 });
+    }
+  });
+
   // Store draft application in the database
   app.post("/addApplication", async (req, res) => {
     const data = req.body;
