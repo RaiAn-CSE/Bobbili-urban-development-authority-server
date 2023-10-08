@@ -468,6 +468,41 @@ async function run() {
     res.send(result);
   });
 
+  //get serial number
+  app.get("/getSerialNumber", async (req, res) => {
+    // get all collections applications
+    const draftApplications = await draftApplicationCollection
+      .find({})
+      .toArray();
+    const submittedApplications = await submitApplicationCollection
+      .find({})
+      .toArray();
+    const approvedApplications = await approvedCollection.find({}).toArray();
+    const shortfallApplications = await shortfallCollection.find({}).toArray();
+
+    const allApplications = [
+      ...draftApplications,
+      ...submittedApplications,
+      ...approvedApplications,
+      ...shortfallApplications,
+    ];
+
+    if (allApplications?.length) {
+      let applicationNumbers = allApplications.map((application) => {
+        return Number(application?.applicationNo.split("/")[1]);
+      });
+
+      applicationNumbers = applicationNumbers.sort(function (a, b) {
+        return a - b;
+      });
+
+      const lastSerialNumber = Math.max(...applicationNumbers);
+      res.send({ serialNo: lastSerialNumber + 1 });
+    } else {
+      res.send({ serialNo: 1 });
+    }
+  });
+
   // Store draft application in the database
   app.post("/addApplication", async (req, res) => {
     const data = req.body;
@@ -640,21 +675,22 @@ async function run() {
   });
 
   // update user draft application  data
-  app.patch("/updateDraftApplicationData/:id", async (req, res) => {
-    const userId = req.params.id;
+  app.patch("/updateDraftApplicationData", async (req, res) => {
+    const { userId, oldApplicationNo } = JSON.parse(req.query.filterData);
     const newDraftData = req.body;
 
-    const applicationNo = newDraftData?.applicationNo;
+    // const applicationNo = newDraftData?.applicationNo;
 
     // console.log(userId, "USERID", "NEW DRAFT", newDraftData);
 
-    const filter = { userId, applicationNo };
+    const filter = { userId, applicationNo: oldApplicationNo };
 
     const OldApplicationData = await draftApplicationCollection.findOne(filter);
 
     // console.log(oldDraftData, "OLD DRAFT MAIN");
 
     console.log(OldApplicationData, "Old draft data");
+    console.log(newDraftData, "New draft data");
 
     // const findExistingData = oldDraftData.findIndex(
     //   (application) => application.applicationNo === newDraftData.applicationNo
@@ -693,6 +729,9 @@ async function run() {
       ...OldApplicationData,
       ...newDraftData,
     };
+
+    console.log(updatedData, "UPDATE DATA");
+    console.log(filter, "FILTER");
 
     const updateDoc = {
       $set: updatedData,
