@@ -425,7 +425,6 @@ async function run() {
   });
 
   // get application data
-
   app.get("/allPageWiseApplications", async (req, res) => {
     const { userId, searchApplicationName } = JSON.parse(req.query.data);
 
@@ -466,6 +465,31 @@ async function run() {
 
     console.log(result, "Find");
     res.send(result);
+  });
+
+  // get number of applications
+  app.get("/totalApplications", async (req, res) => {
+    const totalSubmitApplications = (
+      await submitApplicationCollection.find({}).toArray()
+    ).length;
+    const totalApprovedApplications = (
+      await approvedCollection.find({}).toArray()
+    ).length;
+    const totalShortfallApplications = (
+      await shortfallCollection.find({}).toArray()
+    ).length;
+
+    const total =
+      totalSubmitApplications +
+      totalApprovedApplications +
+      totalShortfallApplications;
+
+    res.send({
+      submitted: totalApprovedApplications,
+      approved: totalApprovedApplications,
+      shortfall: totalShortfallApplications,
+      total,
+    });
   });
 
   //get serial number
