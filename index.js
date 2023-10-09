@@ -786,20 +786,20 @@ async function run() {
   // update user information
   app.patch("/updateUserInfo/:id", async (req, res) => {
     const id = req.params.id;
-    const { name, userId, password, role } = req.body;
 
-    console.log(id);
+    const data = req.body;
+
+    console.log(id, data);
 
     const filter = { _id: new ObjectId(id) };
 
     const updateDoc = {
       $set: {
-        name,
-        userId,
-        password,
-        role,
+        ...data,
       },
     };
+
+    console.log(updateDoc);
 
     const result = await userCollection.updateOne(filter, updateDoc);
 
