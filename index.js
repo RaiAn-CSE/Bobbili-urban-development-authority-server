@@ -280,9 +280,9 @@ async function run() {
     const result = await userCollection.findOne({ userId: id });
 
     console.log(result);
-    const { _id, role, userId, password, name } = result;
 
     if (result) {
+      const { _id, role, userId, password, name } = result;
       res.send({
         status: 1,
         userInfo: { _id, role, userId, password, name },
