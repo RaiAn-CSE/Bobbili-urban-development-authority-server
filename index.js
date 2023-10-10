@@ -280,9 +280,9 @@ async function run() {
     const result = await userCollection.findOne({ userId: id });
 
     console.log(result);
-    const { _id, role, userId, password, name } = result;
 
     if (result) {
+      const { _id, role, userId, password, name } = result;
       res.send({
         status: 1,
         userInfo: { _id, role, userId, password, name },
@@ -425,7 +425,6 @@ async function run() {
   });
 
   // get application data
-
   app.get("/allPageWiseApplications", async (req, res) => {
     const { userId, searchApplicationName } = JSON.parse(req.query.data);
 
@@ -466,6 +465,31 @@ async function run() {
 
     console.log(result, "Find");
     res.send(result);
+  });
+
+  // get number of applications
+  app.get("/totalApplications", async (req, res) => {
+    const totalSubmitApplications = (
+      await submitApplicationCollection.find({}).toArray()
+    ).length;
+    const totalApprovedApplications = (
+      await approvedCollection.find({}).toArray()
+    ).length;
+    const totalShortfallApplications = (
+      await shortfallCollection.find({}).toArray()
+    ).length;
+
+    const total =
+      totalSubmitApplications +
+      totalApprovedApplications +
+      totalShortfallApplications;
+
+    res.send({
+      submitted: totalApprovedApplications,
+      approved: totalApprovedApplications,
+      shortfall: totalShortfallApplications,
+      total,
+    });
   });
 
   //get serial number
@@ -786,20 +810,20 @@ async function run() {
   // update user information
   app.patch("/updateUserInfo/:id", async (req, res) => {
     const id = req.params.id;
-    const { name, userId, password, role } = req.body;
 
-    console.log(id);
+    const data = req.body;
+
+    console.log(id, data);
 
     const filter = { _id: new ObjectId(id) };
 
     const updateDoc = {
       $set: {
-        name,
-        userId,
-        password,
-        role,
+        ...data,
       },
     };
+
+    console.log(updateDoc);
 
     const result = await userCollection.updateOne(filter, updateDoc);
 
