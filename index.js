@@ -275,7 +275,7 @@ async function run() {
   // get users data
   app.get("/getUser", async (req, res) => {
     const id = req.query.id;
-    console.log(id);
+    console.log(id, "ID");
 
     const result = await userCollection.findOne({ userId: id });
 
@@ -469,27 +469,207 @@ async function run() {
 
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
-    const totalSubmitApplications = (
-      await submitApplicationCollection.find({}).toArray()
-    ).length;
-    const totalApprovedApplications = (
-      await approvedCollection.find({}).toArray()
-    ).length;
-    const totalShortfallApplications = (
-      await shortfallCollection.find({}).toArray()
-    ).length;
+    const totalSubmitApplications = await submitApplicationCollection
+      .find({})
+      .toArray();
+    const totalApprovedApplications = await approvedCollection
+      .find({})
+      .toArray();
+    const totalShortfallApplications = await shortfallCollection
+      .find({})
+      .toArray();
 
     const total =
-      totalSubmitApplications +
-      totalApprovedApplications +
-      totalShortfallApplications;
+      totalSubmitApplications.length +
+      totalApprovedApplications.length +
+      totalShortfallApplications.length;
 
     res.send({
-      submitted: totalApprovedApplications,
-      approved: totalApprovedApplications,
-      shortfall: totalShortfallApplications,
+      approvedApplications: totalApprovedApplications,
+      shortfallApplications: totalShortfallApplications,
+      submittedApplications: totalSubmitApplications,
+      submittedCount: totalApprovedApplications.length,
+      approvedCount: totalApprovedApplications.length,
+      shortfallCount: totalShortfallApplications.length,
       total,
     });
+  });
+
+  // function of finding application based on district
+  const searchBasedOnDistrict = (
+    flag,
+    totalSubmitApplications,
+    totalApprovedApplications,
+    totalShortfallApplications,
+    district,
+    mandal,
+    panchayat
+  ) => {
+    const districtFromSubmitApplication = totalSubmitApplications?.filter(
+      (application) =>
+        application.buildingInfo?.generalInformation?.district === district
+    );
+
+    const districtFromApprovedApplication = totalApprovedApplications?.filter(
+      (application) =>
+        application.buildingInfo?.generalInformation?.district === district
+    );
+
+    const districtFromShortfallApplication = totalShortfallApplications?.filter(
+      (application) =>
+        application.buildingInfo?.generalInformation?.district === district
+    );
+
+    if (flag === 1) {
+      const result = {
+        submitted: districtFromSubmitApplication.length,
+        approved: districtFromApprovedApplication.length,
+        shortfall: districtFromShortfallApplication.length,
+      };
+      console.log(result);
+      // return result;
+    } else {
+      searchBasedOnMandal(
+        flag,
+        districtFromSubmitApplication,
+        districtFromApprovedApplication,
+        districtFromShortfallApplication,
+        mandal,
+        panchayat
+      );
+    }
+  };
+
+  // function of finding application based on mandal
+  const searchBasedOnMandal = (
+    flag,
+    submit,
+    approve,
+    shortfall,
+    mandal,
+    panchayat
+  ) => {
+    console.log("SEARCH ON MANDAL");
+    const filterFromSubmit = submit.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.mandal === mandal
+    );
+    const filterFromApproved = approve.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.mandal === mandal
+    );
+    const filterFromShortfall = shortfall.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.mandal === mandal
+    );
+
+    if (flag === 3) {
+      searchBasedOnPanchayat(
+        filterFromSubmit,
+        filterFromApproved,
+        filterFromShortfall,
+        panchayat
+      );
+    } else {
+      const result = {
+        submitted: filterFromSubmit.length,
+        approved: filterFromApproved.length,
+        shortfall: filterFromShortfall.length,
+      };
+      console.log(result);
+    }
+  };
+
+  // function of finding application based on panchayat
+  const searchBasedOnPanchayat = (submit, approve, shortfall, panchayat) => {
+    console.log("SEARCH ON Panchayat");
+    const filterFromSubmit = submit.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.gramaPanchayat ===
+        panchayat
+    );
+    const filterFromApproved = approve.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.gramaPanchayat ===
+        panchayat
+    );
+    const filterFromShortfall = shortfall.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.gramaPanchayat ===
+        panchayat
+    );
+
+    const result = {
+      submitted: filterFromSubmit.length,
+      approved: filterFromApproved.length,
+      shortfall: filterFromShortfall.length,
+    };
+
+    console.log(result, "Panchayat");
+  };
+
+  const getChartData = async (flag, district, mandal, panchayat) => {
+    const totalSubmitApplications = await submitApplicationCollection
+      .find({})
+      .toArray();
+    const totalApprovedApplications = await approvedCollection
+      .find({})
+      .toArray();
+    const totalShortfallApplications = await shortfallCollection
+      .find({})
+      .toArray();
+
+    switch (flag) {
+      case 1:
+        searchBasedOnDistrict(
+          flag,
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          district
+        );
+        break;
+
+      case 2:
+        searchBasedOnDistrict(
+          flag,
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          district,
+          mandal
+        );
+        break;
+
+      case 3:
+        searchBasedOnDistrict(
+          flag,
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          district,
+          mandal,
+          panchayat
+        );
+        break;
+    }
+  };
+
+  app.get("/filterApplications", async (req, res) => {
+    const search = JSON.parse(req.query.search);
+
+    const district = search.district;
+    const mandal = search.mandal;
+    const panchayat = search.panchayat;
+
+    let flag;
+
+    flag = district.length ? 1 : flag;
+    flag = mandal.length ? 2 : flag;
+    flag = panchayat.length ? 3 : flag;
+    console.log(district, mandal, panchayat, flag);
+
+    getChartData(flag, district);
   });
 
   //get serial number
@@ -590,112 +770,6 @@ async function run() {
         console.log(err);
         res.send({ msg: "Something went wrong" });
       });
-  });
-
-  app.delete("/decisionOfPs", async (req, res) => {
-    const appNo = req.query.appNo;
-
-    const filter = {
-      applicationNo: appNo,
-    };
-
-    const findApplication = await submitApplicationCollection.findOne(filter);
-
-    const date = new Date();
-
-    const day = date.getDate().toString().padStart(2, "0");
-
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-
-    const year = date.getFullYear();
-
-    const psSubmitDate = `${day}-${month}-${year}`;
-
-    // console.log(psSubmitDate);
-
-    const documentPageDecision =
-      findApplication?.psDocumentPageObservation?.approved === "true" ? 1 : 0;
-
-    const drawingPageDecision =
-      findApplication?.psDrawingPageObservation?.approved === "true" ? 1 : 0;
-
-    const siteInspectionPageDecision =
-      findApplication?.siteInspection?.decision?.toLowerCase() === "approved"
-        ? 1
-        : 0;
-
-    // console.log(
-    //   documentPageDecision,
-    //   drawingPageDecision,
-    //   siteInspectionPageDecision
-    // );
-
-    // update application status
-    const updateStatusOfApplication = async (psSubmitData, isApproved) => {
-      const updateData = { ...findApplication, ...psSubmitData };
-
-      console.log(updateData, "updateDoc");
-      const updateDoc = {
-        $set: updateData,
-      };
-
-      const result = await submitApplicationCollection.updateOne(
-        filter,
-        updateDoc
-      );
-
-      if (result.acknowledged) {
-        const findApplication = await submitApplicationCollection.findOne(
-          filter
-        );
-
-        console.log(findApplication, "AFTER SUBMITTED DATA");
-
-        let insertedData;
-
-        if (isApproved) {
-          insertedData = await approvedCollection.insertOne(findApplication);
-        } else {
-          insertedData = await shortfallCollection.insertOne(findApplication);
-        }
-
-        const deleteData = await submitApplicationCollection.deleteOne(filter);
-
-        res.send(insertedData);
-      } else {
-        res.send({ statusText: "Server Error" });
-      }
-    };
-
-    if (
-      documentPageDecision &&
-      drawingPageDecision &&
-      siteInspectionPageDecision
-    ) {
-      const psSubmitData = { psSubmitDate, status: "approved" };
-      console.log("Approved");
-      updateStatusOfApplication(psSubmitData, 1);
-
-      // if (updateStatus) {
-      //   const findApplication = await submitApplicationCollection.findOne(
-      //     filter
-      //   );
-      //   result = await approvedCollection.insertOne(findApplication);
-      // }
-    } else {
-      console.log("Shortfall");
-      const psSubmitData = { psSubmitDate, status: "shortfall" };
-      updateStatusOfApplication(psSubmitData, 0);
-      // if (updateStatus) {
-      //   const findApplication = await submitApplicationCollection.findOne(
-      //     filter
-      //   );
-      //   result = await shortfallCollection.insertOne(findApplication);
-      // }
-    }
-
-    // console.log(result);
-    // res.send(result);
   });
 
   // update user draft application  data
@@ -920,6 +994,112 @@ async function run() {
       applicationNo: appNo,
     });
     console.log(findApplication, "findApplication");
+  });
+
+  app.delete("/decisionOfPs", async (req, res) => {
+    const appNo = req.query.appNo;
+
+    const filter = {
+      applicationNo: appNo,
+    };
+
+    const findApplication = await submitApplicationCollection.findOne(filter);
+
+    const date = new Date();
+
+    const day = date.getDate().toString().padStart(2, "0");
+
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+
+    const year = date.getFullYear();
+
+    const psSubmitDate = `${day}-${month}-${year}`;
+
+    // console.log(psSubmitDate);
+
+    const documentPageDecision =
+      findApplication?.psDocumentPageObservation?.approved === "true" ? 1 : 0;
+
+    const drawingPageDecision =
+      findApplication?.psDrawingPageObservation?.approved === "true" ? 1 : 0;
+
+    const siteInspectionPageDecision =
+      findApplication?.siteInspection?.decision?.toLowerCase() === "approved"
+        ? 1
+        : 0;
+
+    // console.log(
+    //   documentPageDecision,
+    //   drawingPageDecision,
+    //   siteInspectionPageDecision
+    // );
+
+    // update application status
+    const updateStatusOfApplication = async (psSubmitData, isApproved) => {
+      const updateData = { ...findApplication, ...psSubmitData };
+
+      console.log(updateData, "updateDoc");
+      const updateDoc = {
+        $set: updateData,
+      };
+
+      const result = await submitApplicationCollection.updateOne(
+        filter,
+        updateDoc
+      );
+
+      if (result.acknowledged) {
+        const findApplication = await submitApplicationCollection.findOne(
+          filter
+        );
+
+        console.log(findApplication, "AFTER SUBMITTED DATA");
+
+        let insertedData;
+
+        if (isApproved) {
+          insertedData = await approvedCollection.insertOne(findApplication);
+        } else {
+          insertedData = await shortfallCollection.insertOne(findApplication);
+        }
+
+        const deleteData = await submitApplicationCollection.deleteOne(filter);
+
+        res.send(insertedData);
+      } else {
+        res.send({ statusText: "Server Error" });
+      }
+    };
+
+    if (
+      documentPageDecision &&
+      drawingPageDecision &&
+      siteInspectionPageDecision
+    ) {
+      const psSubmitData = { psSubmitDate, status: "approved" };
+      console.log("Approved");
+      updateStatusOfApplication(psSubmitData, 1);
+
+      // if (updateStatus) {
+      //   const findApplication = await submitApplicationCollection.findOne(
+      //     filter
+      //   );
+      //   result = await approvedCollection.insertOne(findApplication);
+      // }
+    } else {
+      console.log("Shortfall");
+      const psSubmitData = { psSubmitDate, status: "shortfall" };
+      updateStatusOfApplication(psSubmitData, 0);
+      // if (updateStatus) {
+      //   const findApplication = await submitApplicationCollection.findOne(
+      //     filter
+      //   );
+      //   result = await shortfallCollection.insertOne(findApplication);
+      // }
+    }
+
+    // console.log(result);
+    // res.send(result);
   });
 }
 
