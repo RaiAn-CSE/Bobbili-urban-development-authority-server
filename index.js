@@ -528,9 +528,11 @@ async function run() {
         shortfall: districtFromShortfallApplication.length,
       };
       console.log(result, "district");
+
+      return result;
       // return result;
     } else {
-      searchBasedOnMandal(
+      const result = searchBasedOnMandal(
         flag,
         districtFromSubmitApplication,
         districtFromApprovedApplication,
@@ -539,6 +541,8 @@ async function run() {
         panchayat,
         date
       );
+
+      return result;
     }
   };
 
@@ -567,7 +571,7 @@ async function run() {
     );
 
     if (flag !== 2) {
-      searchBasedOnPanchayat(
+      const result = searchBasedOnPanchayat(
         flag,
         filterFromSubmit,
         filterFromApproved,
@@ -575,6 +579,8 @@ async function run() {
         panchayat,
         date
       );
+
+      return result;
     } else {
       const result = {
         submitted: filterFromSubmit.length,
@@ -582,6 +588,7 @@ async function run() {
         shortfall: filterFromShortfall.length,
       };
       console.log(result, "Mandal");
+      return result;
     }
   };
 
@@ -612,12 +619,14 @@ async function run() {
     );
 
     if (flag === 4) {
-      searchBasedOnDate(
+      const result = searchBasedOnDate(
         filterFromSubmit,
         filterFromApproved,
         filterFromShortfall,
         date
       );
+
+      return result;
     } else {
       const result = {
         submitted: filterFromSubmit.length,
@@ -625,6 +634,7 @@ async function run() {
         shortfall: filterFromShortfall.length,
       };
       console.log(result, "PANCHAYAT");
+      return result;
     }
   };
 
@@ -684,12 +694,12 @@ async function run() {
     });
 
     const result = {
-      submitted: filterFromSubmit.length,
-      approved: filterFromApproved.length,
-      shortfall: filterFromShortfall.length,
+      submitted: filterFromSubmit?.length ?? 0,
+      approved: filterFromApproved?.length ?? 0,
+      shortfall: filterFromShortfall?.length ?? 0,
     };
 
-    console.log(result, "DATE");
+    return result;
   };
 
   const checkLastWeek = (dateFromDB) => {
@@ -743,9 +753,11 @@ async function run() {
       .find({})
       .toArray();
 
+    let result;
+
     switch (flag) {
       case 1:
-        searchBasedOnDistrict(
+        result = searchBasedOnDistrict(
           flag,
           totalSubmitApplications,
           totalApprovedApplications,
@@ -755,7 +767,7 @@ async function run() {
         break;
 
       case 2:
-        searchBasedOnDistrict(
+        result = searchBasedOnDistrict(
           flag,
           totalSubmitApplications,
           totalApprovedApplications,
@@ -766,7 +778,7 @@ async function run() {
         break;
 
       case 3:
-        searchBasedOnDistrict(
+        result = searchBasedOnDistrict(
           flag,
           totalSubmitApplications,
           totalApprovedApplications,
@@ -778,7 +790,7 @@ async function run() {
         break;
 
       case 4:
-        searchBasedOnDistrict(
+        result = searchBasedOnDistrict(
           flag,
           totalSubmitApplications,
           totalApprovedApplications,
@@ -788,7 +800,12 @@ async function run() {
           panchayat,
           date
         );
+        break;
     }
+
+    console.log(result, "BREAK");
+
+    return result;
   };
 
   app.get("/filterApplications", async (req, res) => {
@@ -808,7 +825,11 @@ async function run() {
     flag = date.length ? 4 : flag;
     console.log(district, mandal, panchayat, date, flag);
 
-    getChartData(flag, district, mandal, panchayat, date);
+    const result = await getChartData(flag, district, mandal, panchayat, date);
+
+    console.log(result, "ALL RESULT");
+
+    res.send(result);
   });
 
   //get serial number
