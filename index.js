@@ -488,9 +488,9 @@ async function run() {
       approvedApplications: totalApprovedApplications,
       shortfallApplications: totalShortfallApplications,
       submittedApplications: totalSubmitApplications,
-      submittedCount: totalApprovedApplications.length,
-      approvedCount: totalApprovedApplications.length,
-      shortfallCount: totalShortfallApplications.length,
+      received: totalApprovedApplications.length,
+      approved: totalApprovedApplications.length,
+      shortfall: totalShortfallApplications.length,
       total,
     });
   });
