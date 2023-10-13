@@ -618,6 +618,36 @@ async function run() {
   // })();
 
   // function of finding application based on district
+
+  const sumOfAllAppCharges = (submitApp, approvedApp, shortfallApp) => {
+    const sumOfAllUdaCharges =
+      submitApp?.totalUdaCharge +
+      approvedApp?.totalUdaCharge +
+      shortfallApp?.totalUdaCharge;
+
+    const sumOfAllPanchayatCharges =
+      submitApp?.totalPanchayatCharge +
+      approvedApp?.totalPanchayatCharge +
+      shortfallApp?.totalPanchayatCharge;
+
+    const sumOfAllGreenFeeCharges =
+      submitApp?.totalGreenFee +
+      approvedApp?.totalGreenFee +
+      shortfallApp?.totalGreenFee;
+
+    const sumOfAllLabourCharges =
+      submitApp?.totalLabourCharge +
+      approvedApp?.totalLabourCharge +
+      shortfallApp?.totalLabourCharge;
+
+    return {
+      totalUdaCharge: sumOfAllUdaCharges,
+      totalPanchayatCharge: sumOfAllPanchayatCharges,
+      totalGreenFee: sumOfAllGreenFeeCharges,
+      totalLabourCharge: sumOfAllLabourCharges,
+    };
+  };
+
   const searchBasedOnDistrict = (
     flag,
     totalSubmitApplications,
@@ -633,6 +663,8 @@ async function run() {
         application.buildingInfo?.generalInformation?.district === district
     );
 
+    // console.log(districtFromSubmitApplication, "FROM");
+
     const districtFromApprovedApplication = totalApprovedApplications?.filter(
       (application) =>
         application.buildingInfo?.generalInformation?.district === district
@@ -644,10 +676,32 @@ async function run() {
     );
 
     if (flag === 1) {
+      const submitAppCharges = extractCharges(districtFromSubmitApplication);
+      const approvedAppCharges = extractCharges(
+        districtFromApprovedApplication
+      );
+      const shortfallAppCharges = extractCharges(
+        districtFromShortfallApplication
+      );
+
+      const charges = sumOfAllAppCharges(
+        submitAppCharges,
+        approvedAppCharges,
+        shortfallAppCharges
+      );
+
       const result = {
-        submitted: districtFromSubmitApplication.length,
-        approved: districtFromApprovedApplication.length,
-        shortfall: districtFromShortfallApplication.length,
+        applications: {
+          approvedApplications: districtFromApprovedApplication,
+          shortfallApplications: districtFromShortfallApplication,
+          submittedApplications: districtFromSubmitApplication,
+        },
+        totalApplication: {
+          submitted: districtFromSubmitApplication.length,
+          approved: districtFromApprovedApplication.length,
+          shortfall: districtFromShortfallApplication.length,
+        },
+        charges,
       };
       console.log(result, "district");
 
@@ -704,10 +758,28 @@ async function run() {
 
       return result;
     } else {
+      const submitAppCharges = extractCharges(filterFromSubmit);
+      const approvedAppCharges = extractCharges(filterFromApproved);
+      const shortfallAppCharges = extractCharges(filterFromShortfall);
+
+      const charges = sumOfAllAppCharges(
+        submitAppCharges,
+        approvedAppCharges,
+        shortfallAppCharges
+      );
+
       const result = {
-        submitted: filterFromSubmit.length,
-        approved: filterFromApproved.length,
-        shortfall: filterFromShortfall.length,
+        totalApplication: {
+          submitted: filterFromSubmit.length,
+          approved: filterFromApproved.length,
+          shortfall: filterFromShortfall.length,
+        },
+        applications: {
+          approvedApplications: filterFromApproved,
+          shortfallApplications: filterFromShortfall,
+          submittedApplications: filterFromSubmit,
+        },
+        charges,
       };
       console.log(result, "Mandal");
       return result;
@@ -750,10 +822,28 @@ async function run() {
 
       return result;
     } else {
+      const submitAppCharges = extractCharges(filterFromSubmit);
+      const approvedAppCharges = extractCharges(filterFromApproved);
+      const shortfallAppCharges = extractCharges(filterFromShortfall);
+
+      const charges = sumOfAllAppCharges(
+        submitAppCharges,
+        approvedAppCharges,
+        shortfallAppCharges
+      );
+
       const result = {
-        submitted: filterFromSubmit.length,
-        approved: filterFromApproved.length,
-        shortfall: filterFromShortfall.length,
+        totalApplication: {
+          submitted: filterFromSubmit.length,
+          approved: filterFromApproved.length,
+          shortfall: filterFromShortfall.length,
+        },
+        applications: {
+          approvedApplications: filterFromApproved,
+          shortfallApplications: filterFromShortfall,
+          submittedApplications: filterFromSubmit,
+        },
+        charges,
       };
       console.log(result, "PANCHAYAT");
       return result;
@@ -815,10 +905,28 @@ async function run() {
       }
     });
 
+    const submitAppCharges = extractCharges(filterFromSubmit);
+    const approvedAppCharges = extractCharges(filterFromApproved);
+    const shortfallAppCharges = extractCharges(filterFromShortfall);
+
+    const charges = sumOfAllAppCharges(
+      submitAppCharges,
+      approvedAppCharges,
+      shortfallAppCharges
+    );
+
     const result = {
-      submitted: filterFromSubmit?.length ?? 0,
-      approved: filterFromApproved?.length ?? 0,
-      shortfall: filterFromShortfall?.length ?? 0,
+      totalApplication: {
+        submitted: filterFromSubmit.length,
+        approved: filterFromApproved.length,
+        shortfall: filterFromShortfall.length,
+      },
+      applications: {
+        approvedApplications: filterFromApproved,
+        shortfallApplications: filterFromShortfall,
+        submittedApplications: filterFromSubmit,
+      },
+      charges,
     };
 
     return result;
