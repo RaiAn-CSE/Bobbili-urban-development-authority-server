@@ -467,6 +467,99 @@ async function run() {
     res.send(result);
   });
 
+  const sumOfArrayElements = (arr) => {
+    const sum = arr.reduce((accumulator, currentValue) => {
+      return accumulator + currentValue;
+    }, 0);
+    return sum;
+  };
+  const extractCharges = (allApplication) => {
+    // uda Charge extract
+    const extractUdaCharge = allApplication?.map((eachApplication) => {
+      // console.log(eachApplication, "Each");
+      const udaCharge = eachApplication?.payment?.udaCharge?.UDATotalCharged;
+
+      console.log(udaCharge, "first");
+
+      const udaChargeNumber = Number(udaCharge);
+
+      console.log(udaChargeNumber, "Number");
+
+      const finalUdaCharge = isNaN(udaChargeNumber) ? 0 : udaChargeNumber;
+
+      console.log(finalUdaCharge, "Final");
+
+      return finalUdaCharge;
+    });
+    const extractPanchayatCharge = allApplication?.map((eachApplication) => {
+      // console.log(eachApplication, "Each");
+      const panchayatCharge =
+        eachApplication?.payment?.gramaPanchayatFee?.GramaPanchayetTotalCharged;
+
+      console.log(panchayatCharge, "first");
+
+      const panchayatChargeNumber = Number(panchayatCharge);
+
+      console.log(panchayatCharge, "Number");
+
+      const finalPanchayatCharge = isNaN(panchayatChargeNumber)
+        ? 0
+        : panchayatChargeNumber;
+
+      console.log(finalPanchayatCharge, "Final");
+
+      return finalPanchayatCharge;
+    });
+    const extractGreenFee = allApplication?.map((eachApplication) => {
+      // console.log(eachApplication, "Each");
+      const greenFee =
+        eachApplication?.payment?.greenFeeCharge?.greenFeeChargeAmount;
+
+      console.log(greenFee, "first");
+
+      const greenFeeNumber = Number(greenFee);
+
+      console.log(greenFeeNumber, "Number");
+
+      const finalGreenFee = isNaN(greenFeeNumber) ? 0 : greenFeeNumber;
+
+      console.log(finalGreenFee, "Final");
+
+      return finalGreenFee;
+    });
+    const extractLabourCharge = allApplication?.map((eachApplication) => {
+      // console.log(eachApplication, "Each");
+      const labourCharge =
+        eachApplication?.payment?.labourCessCharge?.labourCessOne;
+
+      console.log(labourCharge, "first");
+
+      const labourChargeNumber = Number(labourCharge);
+
+      console.log(labourChargeNumber, "Number");
+
+      const finalLabourCharge = isNaN(labourChargeNumber)
+        ? 0
+        : labourChargeNumber;
+
+      console.log(finalLabourCharge, "Final");
+
+      return finalLabourCharge;
+    });
+
+    const totalUdaCharge = sumOfArrayElements(extractUdaCharge);
+    const totalPanchayatCharge = sumOfArrayElements(extractPanchayatCharge);
+    const totalGreenFee = sumOfArrayElements(extractGreenFee);
+    const totalLabourCharge = sumOfArrayElements(extractLabourCharge);
+
+    return {
+      totalUdaCharge,
+      totalPanchayatCharge,
+      totalGreenFee,
+      totalLabourCharge,
+    };
+  };
+
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
     const totalSubmitApplications = await submitApplicationCollection
@@ -484,16 +577,45 @@ async function run() {
       totalApprovedApplications.length +
       totalShortfallApplications.length;
 
-    res.send({
-      approvedApplications: totalApprovedApplications,
-      shortfallApplications: totalShortfallApplications,
-      submittedApplications: totalSubmitApplications,
-      received: totalApprovedApplications.length,
-      approved: totalApprovedApplications.length,
-      shortfall: totalShortfallApplications.length,
-      total,
-    });
+    const charges = extractCharges(totalApprovedApplications);
+
+    const result = {
+      applications: {
+        approvedApplications: totalApprovedApplications,
+        shortfallApplications: totalShortfallApplications,
+        submittedApplications: totalSubmitApplications,
+      },
+      totalApplication: {
+        received: totalApprovedApplications.length,
+        approved: totalApprovedApplications.length,
+        shortfall: totalShortfallApplications.length,
+        total,
+      },
+      charges,
+    };
+
+    res.send(result);
   });
+
+  // (async function hi() {
+
+  //   const totalSubmitApplications = await submitApplicationCollection
+  //     .find({})
+  //     .toArray();
+  //   const totalApprovedApplications = await approvedCollection
+  //     .find({})
+  //     .toArray();
+  //   const totalShortfallApplications = await shortfallCollection
+  //     .find({})
+  //     .toArray();
+
+  //   console.log(
+  //     totalSubmitApplications.length,
+  //     totalApprovedApplications.length,
+  //     totalShortfallApplications.length
+  //   );
+
+  // })();
 
   // function of finding application based on district
   const searchBasedOnDistrict = (
