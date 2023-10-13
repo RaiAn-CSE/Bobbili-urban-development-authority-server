@@ -577,7 +577,15 @@ async function run() {
       totalApprovedApplications.length +
       totalShortfallApplications.length;
 
-    const charges = extractCharges(totalApprovedApplications);
+    const submitAppCharges = extractCharges(totalSubmitApplications);
+    const approvedAppCharges = extractCharges(totalApprovedApplications);
+    const shortfallAppCharges = extractCharges(totalShortfallApplications);
+
+    const charges = sumOfAllAppCharges(
+      submitAppCharges,
+      approvedAppCharges,
+      shortfallAppCharges
+    );
 
     const result = {
       applications: {
