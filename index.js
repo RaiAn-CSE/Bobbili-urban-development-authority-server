@@ -933,6 +933,7 @@ async function run() {
   };
 
   const checkLastWeek = (dateFromDB) => {
+    console.log(dateFromDB, "FIRST GET DATE");
     const targetDate = new Date(dateFromDB);
 
     const currentDate = new Date();
@@ -944,6 +945,7 @@ async function run() {
     console.log(daysDifference);
 
     if (daysDifference >= 1 && daysDifference < 8) {
+      console.log(targetDate, daysDifference);
       return 1;
     } else {
       return 0;
@@ -961,7 +963,12 @@ async function run() {
 
     const exactMonthDifference = yearDifference * 12 + monthDifference;
 
-    console.log(exactMonthDifference);
+    console.log(
+      exactMonthDifference,
+      targetDate,
+      dateFromDB,
+      "Exact month difference"
+    );
 
     if (exactMonthDifference > 0 && exactMonthDifference < duration + 1) {
       return 1;
