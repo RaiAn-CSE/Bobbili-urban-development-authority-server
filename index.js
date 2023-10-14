@@ -294,6 +294,15 @@ async function run() {
     }
   });
 
+  // users all information
+  app.get("/userInformation", async (req, res) => {
+    const id = req.query.id;
+    console.log(id, "ID");
+
+    const result = await userCollection.findOne({ userId: id });
+    res.send(result);
+  });
+
   // get all users
   app.get("/allUser", async (req, res) => {
     const cursor = userCollection.find({});
