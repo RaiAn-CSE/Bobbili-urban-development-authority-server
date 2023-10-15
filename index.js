@@ -159,19 +159,19 @@ const deletePreviousFile = (oldData, newData) => {
   console.log(oldData, "OldData");
   console.log(newData, "NEW DATA");
 
-  if (newData.documents) {
-    const extractOldData = Object.values(oldData.documents);
-    const extractNewData = Object.values(newData.documents);
+  // if (newData.documents) {
+  //   const extractOldData = Object.values(oldData.documents);
+  //   const extractNewData = Object.values(newData.documents);
 
-    console.log(extractOldData, "Document OLD");
-    console.log(extractNewData, "DOCUMENT NEW");
+  //   console.log(extractOldData, "Document OLD");
+  //   console.log(extractNewData, "DOCUMENT NEW");
 
-    fileIdArr = extractOldData.filter(
-      (old, index) => old !== extractNewData[index]
-    );
+  //   fileIdArr = extractOldData.filter(
+  //     (old, index) => old !== extractNewData[index]
+  //   );
 
-    console.log(fileIdArr, "DOCUMENT FILE ID ARR");
-  }
+  //   console.log(fileIdArr, "DOCUMENT FILE ID ARR");
+  // }
 
   if (newData.drawing) {
     console.log(oldData.drawing, "OLD DATA");
@@ -275,7 +275,7 @@ async function run() {
   // get users data
   app.get("/getUser", async (req, res) => {
     const id = req.query.id;
-    console.log(id);
+    console.log(id, "ID");
 
     const result = await userCollection.findOne({ userId: id });
 
@@ -292,6 +292,15 @@ async function run() {
         status: 0,
       });
     }
+  });
+
+  // users all information
+  app.get("/userInformation", async (req, res) => {
+    const id = req.query.id;
+    console.log(id, "ID");
+
+    const result = await userCollection.findOne({ userId: id });
+    res.send(result);
   });
 
   // get all users
@@ -467,29 +476,614 @@ async function run() {
     res.send(result);
   });
 
+  const sumOfArrayElements = (arr) => {
+    const sum = arr.reduce((accumulator, currentValue) => {
+      return accumulator + currentValue;
+    }, 0);
+    return sum;
+  };
+  const extractCharges = (allApplication) => {
+    // uda Charge extract
+    const extractUdaCharge = allApplication?.map((eachApplication) => {
+      // console.log(eachApplication, "Each");
+      const udaCharge = eachApplication?.payment?.udaCharge?.UDATotalCharged;
+
+      console.log(udaCharge, "first");
+
+      const udaChargeNumber = Number(udaCharge);
+
+      console.log(udaChargeNumber, "Number");
+
+      const finalUdaCharge = isNaN(udaChargeNumber) ? 0 : udaChargeNumber;
+
+      console.log(finalUdaCharge, "Final");
+
+      return finalUdaCharge;
+    });
+    const extractPanchayatCharge = allApplication?.map((eachApplication) => {
+      // console.log(eachApplication, "Each");
+      const panchayatCharge =
+        eachApplication?.payment?.gramaPanchayatFee?.GramaPanchayetTotalCharged;
+
+      console.log(panchayatCharge, "first");
+
+      const panchayatChargeNumber = Number(panchayatCharge);
+
+      console.log(panchayatCharge, "Number");
+
+      const finalPanchayatCharge = isNaN(panchayatChargeNumber)
+        ? 0
+        : panchayatChargeNumber;
+
+      console.log(finalPanchayatCharge, "Final");
+
+      return finalPanchayatCharge;
+    });
+    const extractGreenFee = allApplication?.map((eachApplication) => {
+      // console.log(eachApplication, "Each");
+      const greenFee =
+        eachApplication?.payment?.greenFeeCharge?.greenFeeChargeAmount;
+
+      console.log(greenFee, "first");
+
+      const greenFeeNumber = Number(greenFee);
+
+      console.log(greenFeeNumber, "Number");
+
+      const finalGreenFee = isNaN(greenFeeNumber) ? 0 : greenFeeNumber;
+
+      console.log(finalGreenFee, "Final");
+
+      return finalGreenFee;
+    });
+    const extractLabourCharge = allApplication?.map((eachApplication) => {
+      // console.log(eachApplication, "Each");
+      const labourCharge =
+        eachApplication?.payment?.labourCessCharge?.labourCessOne;
+
+      console.log(labourCharge, "first");
+
+      const labourChargeNumber = Number(labourCharge);
+
+      console.log(labourChargeNumber, "Number");
+
+      const finalLabourCharge = isNaN(labourChargeNumber)
+        ? 0
+        : labourChargeNumber;
+
+      console.log(finalLabourCharge, "Final");
+
+      return finalLabourCharge;
+    });
+
+    const totalUdaCharge = sumOfArrayElements(extractUdaCharge);
+    const totalPanchayatCharge = sumOfArrayElements(extractPanchayatCharge);
+    const totalGreenFee = sumOfArrayElements(extractGreenFee);
+    const totalLabourCharge = sumOfArrayElements(extractLabourCharge);
+
+    return {
+      totalUdaCharge,
+      totalPanchayatCharge,
+      totalGreenFee,
+      totalLabourCharge,
+    };
+  };
+
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
-    const totalSubmitApplications = (
-      await submitApplicationCollection.find({}).toArray()
-    ).length;
-    const totalApprovedApplications = (
-      await approvedCollection.find({}).toArray()
-    ).length;
-    const totalShortfallApplications = (
-      await shortfallCollection.find({}).toArray()
-    ).length;
+    const totalSubmitApplications = await submitApplicationCollection
+      .find({})
+      .toArray();
+    const totalApprovedApplications = await approvedCollection
+      .find({})
+      .toArray();
+    const totalShortfallApplications = await shortfallCollection
+      .find({})
+      .toArray();
 
     const total =
-      totalSubmitApplications +
-      totalApprovedApplications +
-      totalShortfallApplications;
+      totalSubmitApplications.length +
+      totalApprovedApplications.length +
+      totalShortfallApplications.length;
 
-    res.send({
-      submitted: totalApprovedApplications,
-      approved: totalApprovedApplications,
-      shortfall: totalShortfallApplications,
-      total,
+    const submitAppCharges = extractCharges(totalSubmitApplications);
+    const approvedAppCharges = extractCharges(totalApprovedApplications);
+    const shortfallAppCharges = extractCharges(totalShortfallApplications);
+
+    const charges = sumOfAllAppCharges(
+      submitAppCharges,
+      approvedAppCharges,
+      shortfallAppCharges
+    );
+
+    const result = {
+      applications: {
+        approvedApplications: totalApprovedApplications,
+        shortfallApplications: totalShortfallApplications,
+        submittedApplications: totalSubmitApplications,
+      },
+      totalApplication: {
+        received: totalApprovedApplications.length,
+        approved: totalApprovedApplications.length,
+        shortfall: totalShortfallApplications.length,
+        total,
+      },
+      charges,
+    };
+
+    res.send(result);
+  });
+
+  // (async function hi() {
+
+  //   const totalSubmitApplications = await submitApplicationCollection
+  //     .find({})
+  //     .toArray();
+  //   const totalApprovedApplications = await approvedCollection
+  //     .find({})
+  //     .toArray();
+  //   const totalShortfallApplications = await shortfallCollection
+  //     .find({})
+  //     .toArray();
+
+  //   console.log(
+  //     totalSubmitApplications.length,
+  //     totalApprovedApplications.length,
+  //     totalShortfallApplications.length
+  //   );
+
+  // })();
+
+  // function of finding application based on district
+
+  const sumOfAllAppCharges = (submitApp, approvedApp, shortfallApp) => {
+    const sumOfAllUdaCharges =
+      submitApp?.totalUdaCharge +
+      approvedApp?.totalUdaCharge +
+      shortfallApp?.totalUdaCharge;
+
+    const sumOfAllPanchayatCharges =
+      submitApp?.totalPanchayatCharge +
+      approvedApp?.totalPanchayatCharge +
+      shortfallApp?.totalPanchayatCharge;
+
+    const sumOfAllGreenFeeCharges =
+      submitApp?.totalGreenFee +
+      approvedApp?.totalGreenFee +
+      shortfallApp?.totalGreenFee;
+
+    const sumOfAllLabourCharges =
+      submitApp?.totalLabourCharge +
+      approvedApp?.totalLabourCharge +
+      shortfallApp?.totalLabourCharge;
+
+    return {
+      totalUdaCharge: sumOfAllUdaCharges,
+      totalPanchayatCharge: sumOfAllPanchayatCharges,
+      totalGreenFee: sumOfAllGreenFeeCharges,
+      totalLabourCharge: sumOfAllLabourCharges,
+    };
+  };
+
+  const searchBasedOnDistrict = (
+    flag,
+    totalSubmitApplications,
+    totalApprovedApplications,
+    totalShortfallApplications,
+    district,
+    mandal,
+    panchayat,
+    date
+  ) => {
+    const districtFromSubmitApplication = totalSubmitApplications?.filter(
+      (application) =>
+        application.buildingInfo?.generalInformation?.district === district
+    );
+
+    // console.log(districtFromSubmitApplication, "FROM");
+
+    const districtFromApprovedApplication = totalApprovedApplications?.filter(
+      (application) =>
+        application.buildingInfo?.generalInformation?.district === district
+    );
+
+    const districtFromShortfallApplication = totalShortfallApplications?.filter(
+      (application) =>
+        application.buildingInfo?.generalInformation?.district === district
+    );
+
+    if (flag === 1) {
+      const submitAppCharges = extractCharges(districtFromSubmitApplication);
+      const approvedAppCharges = extractCharges(
+        districtFromApprovedApplication
+      );
+      const shortfallAppCharges = extractCharges(
+        districtFromShortfallApplication
+      );
+
+      const charges = sumOfAllAppCharges(
+        submitAppCharges,
+        approvedAppCharges,
+        shortfallAppCharges
+      );
+
+      const result = {
+        applications: {
+          approvedApplications: districtFromApprovedApplication,
+          shortfallApplications: districtFromShortfallApplication,
+          submittedApplications: districtFromSubmitApplication,
+        },
+        totalApplication: {
+          submitted: districtFromSubmitApplication.length,
+          approved: districtFromApprovedApplication.length,
+          shortfall: districtFromShortfallApplication.length,
+        },
+        charges,
+      };
+      console.log(result, "district");
+
+      return result;
+      // return result;
+    } else {
+      const result = searchBasedOnMandal(
+        flag,
+        districtFromSubmitApplication,
+        districtFromApprovedApplication,
+        districtFromShortfallApplication,
+        mandal,
+        panchayat,
+        date
+      );
+
+      return result;
+    }
+  };
+
+  // function of finding application based on mandal
+  const searchBasedOnMandal = (
+    flag,
+    submit,
+    approve,
+    shortfall,
+    mandal,
+    panchayat,
+    date
+  ) => {
+    // console.log("SEARCH ON MANDAL");
+    const filterFromSubmit = submit.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.mandal === mandal
+    );
+    const filterFromApproved = approve.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.mandal === mandal
+    );
+    const filterFromShortfall = shortfall.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.mandal === mandal
+    );
+
+    if (flag !== 2) {
+      const result = searchBasedOnPanchayat(
+        flag,
+        filterFromSubmit,
+        filterFromApproved,
+        filterFromShortfall,
+        panchayat,
+        date
+      );
+
+      return result;
+    } else {
+      const submitAppCharges = extractCharges(filterFromSubmit);
+      const approvedAppCharges = extractCharges(filterFromApproved);
+      const shortfallAppCharges = extractCharges(filterFromShortfall);
+
+      const charges = sumOfAllAppCharges(
+        submitAppCharges,
+        approvedAppCharges,
+        shortfallAppCharges
+      );
+
+      const result = {
+        totalApplication: {
+          submitted: filterFromSubmit.length,
+          approved: filterFromApproved.length,
+          shortfall: filterFromShortfall.length,
+        },
+        applications: {
+          approvedApplications: filterFromApproved,
+          shortfallApplications: filterFromShortfall,
+          submittedApplications: filterFromSubmit,
+        },
+        charges,
+      };
+      console.log(result, "Mandal");
+      return result;
+    }
+  };
+
+  // function of finding application based on panchayat
+  const searchBasedOnPanchayat = (
+    flag,
+    submit,
+    approve,
+    shortfall,
+    panchayat,
+    date
+  ) => {
+    // console.log("SEARCH ON Panchayat");
+    const filterFromSubmit = submit.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.gramaPanchayat ===
+        panchayat
+    );
+    const filterFromApproved = approve.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.gramaPanchayat ===
+        panchayat
+    );
+    const filterFromShortfall = shortfall.filter(
+      (application) =>
+        application?.buildingInfo?.generalInformation?.gramaPanchayat ===
+        panchayat
+    );
+
+    if (flag === 4) {
+      const result = searchBasedOnDate(
+        filterFromSubmit,
+        filterFromApproved,
+        filterFromShortfall,
+        date
+      );
+
+      return result;
+    } else {
+      const submitAppCharges = extractCharges(filterFromSubmit);
+      const approvedAppCharges = extractCharges(filterFromApproved);
+      const shortfallAppCharges = extractCharges(filterFromShortfall);
+
+      const charges = sumOfAllAppCharges(
+        submitAppCharges,
+        approvedAppCharges,
+        shortfallAppCharges
+      );
+
+      const result = {
+        totalApplication: {
+          submitted: filterFromSubmit.length,
+          approved: filterFromApproved.length,
+          shortfall: filterFromShortfall.length,
+        },
+        applications: {
+          approvedApplications: filterFromApproved,
+          shortfallApplications: filterFromShortfall,
+          submittedApplications: filterFromSubmit,
+        },
+        charges,
+      };
+      console.log(result, "PANCHAYAT");
+      return result;
+    }
+  };
+
+  // function of finding application based on date
+  const searchBasedOnDate = (submit, approve, shortfall, date) => {
+    console.log("Search based on date");
+    const filterFromSubmit = submit.filter((application) => {
+      const dateFromDB = application?.submitDate
+        ?.split("-")
+        ?.reverse()
+        ?.join("-");
+      if (date === "7 days" && checkLastWeek(dateFromDB)) {
+        return application;
+      }
+
+      if (date === "6 months" && checkLastSixAndTweleveMonths(dateFromDB, 6)) {
+        return application;
+      }
+
+      if (date === "1 year" && checkLastSixAndTweleveMonths(dateFromDB, 12)) {
+        return application;
+      }
     });
+    const filterFromApproved = approve.filter((application) => {
+      const dateFromDB = application?.psSubmitDate
+        ?.split("-")
+        ?.reverse()
+        ?.join("-");
+      if (date === "7 days" && checkLastWeek(dateFromDB)) {
+        return application;
+      }
+
+      if (date === "6 months" && checkLastSixAndTweleveMonths(dateFromDB, 6)) {
+        return application;
+      }
+
+      if (date === "1 year" && checkLastSixAndTweleveMonths(dateFromDB, 12)) {
+        return application;
+      }
+    });
+    const filterFromShortfall = shortfall.filter((application) => {
+      const dateFromDB = application?.psSubmitDate
+        ?.split("-")
+        ?.reverse()
+        ?.join("-");
+      if (date === "7 days" && checkLastWeek(dateFromDB)) {
+        return application;
+      }
+
+      if (date === "6 months" && checkLastSixAndTweleveMonths(dateFromDB, 6)) {
+        return application;
+      }
+
+      if (date === "1 year" && checkLastSixAndTweleveMonths(dateFromDB, 12)) {
+        return application;
+      }
+    });
+
+    const submitAppCharges = extractCharges(filterFromSubmit);
+    const approvedAppCharges = extractCharges(filterFromApproved);
+    const shortfallAppCharges = extractCharges(filterFromShortfall);
+
+    const charges = sumOfAllAppCharges(
+      submitAppCharges,
+      approvedAppCharges,
+      shortfallAppCharges
+    );
+
+    const result = {
+      totalApplication: {
+        submitted: filterFromSubmit.length,
+        approved: filterFromApproved.length,
+        shortfall: filterFromShortfall.length,
+      },
+      applications: {
+        approvedApplications: filterFromApproved,
+        shortfallApplications: filterFromShortfall,
+        submittedApplications: filterFromSubmit,
+      },
+      charges,
+    };
+
+    return result;
+  };
+
+  const checkLastWeek = (dateFromDB) => {
+    console.log(dateFromDB, "FIRST GET DATE");
+    const targetDate = new Date(dateFromDB);
+
+    const currentDate = new Date();
+
+    const timeDifference = currentDate - targetDate;
+
+    const daysDifference = timeDifference / (24 * 3600 * 1000);
+
+    console.log(daysDifference);
+
+    if (daysDifference >= 1 && daysDifference < 8) {
+      console.log(targetDate, daysDifference);
+      return 1;
+    } else {
+      return 0;
+    }
+  };
+
+  const checkLastSixAndTweleveMonths = (dateFromDB, duration) => {
+    const targetDate = new Date(dateFromDB);
+
+    const currentDate = new Date();
+
+    const yearDifference = currentDate.getFullYear() - targetDate.getFullYear();
+
+    const monthDifference = currentDate.getMonth() - targetDate.getMonth();
+
+    const exactMonthDifference = yearDifference * 12 + monthDifference;
+
+    console.log(
+      exactMonthDifference,
+      targetDate,
+      dateFromDB,
+      "Exact month difference"
+    );
+
+    if (exactMonthDifference > 0 && exactMonthDifference < duration + 1) {
+      return 1;
+    } else {
+      return 0;
+    }
+  };
+
+  // console.log(checkLastSixAndTweleveMonths("2022-09-12", 12));
+
+  const getChartData = async (flag, district, mandal, panchayat, date) => {
+    const totalSubmitApplications = await submitApplicationCollection
+      .find({})
+      .toArray();
+    const totalApprovedApplications = await approvedCollection
+      .find({})
+      .toArray();
+    const totalShortfallApplications = await shortfallCollection
+      .find({})
+      .toArray();
+
+    let result;
+
+    switch (flag) {
+      case 1:
+        result = searchBasedOnDistrict(
+          flag,
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          district
+        );
+        break;
+
+      case 2:
+        result = searchBasedOnDistrict(
+          flag,
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          district,
+          mandal
+        );
+        break;
+
+      case 3:
+        result = searchBasedOnDistrict(
+          flag,
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          district,
+          mandal,
+          panchayat
+        );
+        break;
+
+      case 4:
+        result = searchBasedOnDistrict(
+          flag,
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          district,
+          mandal,
+          panchayat,
+          date
+        );
+        break;
+    }
+
+    console.log(result, "BREAK");
+
+    return result;
+  };
+
+  app.get("/filterApplications", async (req, res) => {
+    const search = JSON.parse(req.query.search);
+
+    console.log(search);
+    const district = search.district;
+    const mandal = search.mandal;
+    const panchayat = search.panchayat;
+    const date = search.date;
+
+    let flag;
+
+    flag = district.length ? 1 : flag;
+    flag = mandal.length ? 2 : flag;
+    flag = panchayat.length ? 3 : flag;
+    flag = date.length ? 4 : flag;
+    console.log(district, mandal, panchayat, date, flag);
+
+    const result = await getChartData(flag, district, mandal, panchayat, date);
+
+    console.log(result, "ALL RESULT");
+
+    res.send(result);
   });
 
   //get serial number
@@ -564,6 +1158,7 @@ async function run() {
       document: "1xfk1StJ2AscqxDDoLwNj3tPRUS_dLpw5",
       drawing: "1wRElw-4faLOZWQjV4dzcQ2lHG-IhMhQd",
       payment: "1pWE9tZrfsjiZxNORP5ZwL7Bm72S7JKpY",
+      siteInspection: "1uVuXJz9kfWXyAg5ENfEiWL2qfDtCMa_Z",
     };
 
     console.log("Aschi");
@@ -590,112 +1185,6 @@ async function run() {
         console.log(err);
         res.send({ msg: "Something went wrong" });
       });
-  });
-
-  app.delete("/decisionOfPs", async (req, res) => {
-    const appNo = req.query.appNo;
-
-    const filter = {
-      applicationNo: appNo,
-    };
-
-    const findApplication = await submitApplicationCollection.findOne(filter);
-
-    const date = new Date();
-
-    const day = date.getDate().toString().padStart(2, "0");
-
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-
-    const year = date.getFullYear();
-
-    const psSubmitDate = `${day}-${month}-${year}`;
-
-    // console.log(psSubmitDate);
-
-    const documentPageDecision =
-      findApplication?.psDocumentPageObservation?.approved === "true" ? 1 : 0;
-
-    const drawingPageDecision =
-      findApplication?.psDrawingPageObservation?.approved === "true" ? 1 : 0;
-
-    const siteInspectionPageDecision =
-      findApplication?.siteInspection?.decision?.toLowerCase() === "approved"
-        ? 1
-        : 0;
-
-    // console.log(
-    //   documentPageDecision,
-    //   drawingPageDecision,
-    //   siteInspectionPageDecision
-    // );
-
-    // update application status
-    const updateStatusOfApplication = async (psSubmitData, isApproved) => {
-      const updateData = { ...findApplication, ...psSubmitData };
-
-      console.log(updateData, "updateDoc");
-      const updateDoc = {
-        $set: updateData,
-      };
-
-      const result = await submitApplicationCollection.updateOne(
-        filter,
-        updateDoc
-      );
-
-      if (result.acknowledged) {
-        const findApplication = await submitApplicationCollection.findOne(
-          filter
-        );
-
-        console.log(findApplication, "AFTER SUBMITTED DATA");
-
-        let insertedData;
-
-        if (isApproved) {
-          insertedData = await approvedCollection.insertOne(findApplication);
-        } else {
-          insertedData = await shortfallCollection.insertOne(findApplication);
-        }
-
-        const deleteData = await submitApplicationCollection.deleteOne(filter);
-
-        res.send(insertedData);
-      } else {
-        res.send({ statusText: "Server Error" });
-      }
-    };
-
-    if (
-      documentPageDecision &&
-      drawingPageDecision &&
-      siteInspectionPageDecision
-    ) {
-      const psSubmitData = { psSubmitDate, status: "approved" };
-      console.log("Approved");
-      updateStatusOfApplication(psSubmitData, 1);
-
-      // if (updateStatus) {
-      //   const findApplication = await submitApplicationCollection.findOne(
-      //     filter
-      //   );
-      //   result = await approvedCollection.insertOne(findApplication);
-      // }
-    } else {
-      console.log("Shortfall");
-      const psSubmitData = { psSubmitDate, status: "shortfall" };
-      updateStatusOfApplication(psSubmitData, 0);
-      // if (updateStatus) {
-      //   const findApplication = await submitApplicationCollection.findOne(
-      //     filter
-      //   );
-      //   result = await shortfallCollection.insertOne(findApplication);
-      // }
-    }
-
-    // console.log(result);
-    // res.send(result);
   });
 
   // update user draft application  data
@@ -920,6 +1409,112 @@ async function run() {
       applicationNo: appNo,
     });
     console.log(findApplication, "findApplication");
+  });
+
+  app.delete("/decisionOfPs", async (req, res) => {
+    const appNo = req.query.appNo;
+
+    const filter = {
+      applicationNo: appNo,
+    };
+
+    const findApplication = await submitApplicationCollection.findOne(filter);
+
+    const date = new Date();
+
+    const day = date.getDate().toString().padStart(2, "0");
+
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+
+    const year = date.getFullYear();
+
+    const psSubmitDate = `${day}-${month}-${year}`;
+
+    // console.log(psSubmitDate);
+
+    const documentPageDecision =
+      findApplication?.psDocumentPageObservation?.approved === "true" ? 1 : 0;
+
+    const drawingPageDecision =
+      findApplication?.psDrawingPageObservation?.approved === "true" ? 1 : 0;
+
+    const siteInspectionPageDecision =
+      findApplication?.siteInspection?.decision?.toLowerCase() === "approved"
+        ? 1
+        : 0;
+
+    // console.log(
+    //   documentPageDecision,
+    //   drawingPageDecision,
+    //   siteInspectionPageDecision
+    // );
+
+    // update application status
+    const updateStatusOfApplication = async (psSubmitData, isApproved) => {
+      const updateData = { ...findApplication, ...psSubmitData };
+
+      console.log(updateData, "updateDoc");
+      const updateDoc = {
+        $set: updateData,
+      };
+
+      const result = await submitApplicationCollection.updateOne(
+        filter,
+        updateDoc
+      );
+
+      if (result.acknowledged) {
+        const findApplication = await submitApplicationCollection.findOne(
+          filter
+        );
+
+        console.log(findApplication, "AFTER SUBMITTED DATA");
+
+        let insertedData;
+
+        if (isApproved) {
+          insertedData = await approvedCollection.insertOne(findApplication);
+        } else {
+          insertedData = await shortfallCollection.insertOne(findApplication);
+        }
+
+        const deleteData = await submitApplicationCollection.deleteOne(filter);
+
+        res.send(insertedData);
+      } else {
+        res.send({ statusText: "Server Error" });
+      }
+    };
+
+    if (
+      documentPageDecision &&
+      drawingPageDecision &&
+      siteInspectionPageDecision
+    ) {
+      const psSubmitData = { psSubmitDate, status: "approved" };
+      console.log("Approved");
+      updateStatusOfApplication(psSubmitData, 1);
+
+      // if (updateStatus) {
+      //   const findApplication = await submitApplicationCollection.findOne(
+      //     filter
+      //   );
+      //   result = await approvedCollection.insertOne(findApplication);
+      // }
+    } else {
+      console.log("Shortfall");
+      const psSubmitData = { psSubmitDate, status: "shortfall" };
+      updateStatusOfApplication(psSubmitData, 0);
+      // if (updateStatus) {
+      //   const findApplication = await submitApplicationCollection.findOne(
+      //     filter
+      //   );
+      //   result = await shortfallCollection.insertOne(findApplication);
+      // }
+    }
+
+    // console.log(result);
+    // res.send(result);
   });
 }
 
