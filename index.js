@@ -159,19 +159,19 @@ const deletePreviousFile = (oldData, newData) => {
   console.log(oldData, "OldData");
   console.log(newData, "NEW DATA");
 
-  if (newData.documents) {
-    const extractOldData = Object.values(oldData.documents);
-    const extractNewData = Object.values(newData.documents);
+  // if (newData.documents) {
+  //   const extractOldData = Object.values(oldData.documents);
+  //   const extractNewData = Object.values(newData.documents);
 
-    console.log(extractOldData, "Document OLD");
-    console.log(extractNewData, "DOCUMENT NEW");
+  //   console.log(extractOldData, "Document OLD");
+  //   console.log(extractNewData, "DOCUMENT NEW");
 
-    fileIdArr = extractOldData.filter(
-      (old, index) => old !== extractNewData[index]
-    );
+  //   fileIdArr = extractOldData.filter(
+  //     (old, index) => old !== extractNewData[index]
+  //   );
 
-    console.log(fileIdArr, "DOCUMENT FILE ID ARR");
-  }
+  //   console.log(fileIdArr, "DOCUMENT FILE ID ARR");
+  // }
 
   if (newData.drawing) {
     console.log(oldData.drawing, "OLD DATA");
