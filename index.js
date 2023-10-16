@@ -1114,7 +1114,11 @@ async function run() {
         return a - b;
       });
 
+      console.log(applicationNumbers, "Application numbers");
+
       const lastSerialNumber = Math.max(...applicationNumbers);
+
+      console.log(lastSerialNumber, "SERIAL");
       res.send({ serialNo: lastSerialNumber + 1 });
     } else {
       res.send({ serialNo: 1 });
