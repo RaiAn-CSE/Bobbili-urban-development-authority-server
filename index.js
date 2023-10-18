@@ -1594,5 +1594,31 @@ async function run() {
 
 run().catch(console.dir);
 
+const schedule = require("node-schedule");
+const taskTime = "0 0 * * *"; // Schedule for 12:00 AM
+
+function performMongoDBAction() {
+  MongoClient.connect(uri, { useNewUrlParser: true }, async (err, client) => {
+    if (err) {
+      console.error("Error connecting to MongoDB:", err);
+      return;
+    }
+
+    const db = client.db("Construction-Application");
+
+    // Your MongoDB operations here
+    // For example, you can insert a document into a collection.
+    const submitCollection = db.collection("submitCollection");
+
+    const allSubmitApplication = await submitCollection.find({}).toArray();
+    console.log(allSubmitApplication, "All submit Application");
+  });
+}
+
+// Schedule the task to run at 12:00 AM daily
+const job = schedule.scheduleJob(taskTime, () => {
+  performMongoDBAction();
+});
+
 // Export the Express API
 module.exports = app;
