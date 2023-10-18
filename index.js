@@ -326,19 +326,31 @@ async function run() {
 
   // get specific applicationNo data
   app.get("/getApplicationData", async (req, res) => {
-    const { appNo, userId, role } = JSON.parse(req.query.data);
+    const { appNo, userId, role, page } = JSON.parse(req.query.data);
     console.log(req.query.data);
 
     console.log(appNo, userId);
 
     let result;
-    if (role === "PS") {
+    if (role === "PS" && page === "submit") {
       result = await submitApplicationCollection.findOne({
         applicationNo: appNo,
       });
-    } else if (role === "LTP") {
+    }
+    if (role === "LTP" && page === "draft") {
       result = await draftApplicationCollection.findOne({
         userId,
+        applicationNo: appNo,
+      });
+    }
+
+    if (page === "approved") {
+      result = await approvedCollection.findOne({
+        applicationNo: appNo,
+      });
+    }
+    if (page === "shortfall") {
+      result = await shortfallCollection.findOne({
         applicationNo: appNo,
       });
     }
