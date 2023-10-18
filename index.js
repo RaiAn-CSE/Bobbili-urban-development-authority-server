@@ -159,19 +159,33 @@ const deletePreviousFile = (oldData, newData) => {
   console.log(oldData, "OldData");
   console.log(newData, "NEW DATA");
 
-  // if (newData.documents) {
-  //   const extractOldData = Object.values(oldData.documents);
-  //   const extractNewData = Object.values(newData.documents);
+  if (newData.documents) {
+    // const extractOldData = Object.values(oldData.documents);
+    // const extractNewData = Object.values(newData.documents);
 
-  //   console.log(extractOldData, "Document OLD");
-  //   console.log(extractNewData, "DOCUMENT NEW");
+    function checkExistImageId(extractOldData, extractNewData) {
+      extractNewData.forEach((newValue) => {
+        extractOldData?.forEach((oldValue) => {
+          if (
+            oldValue?.id === newValue?.id &&
+            oldValue?.imageId !== newValue?.imageId
+          ) {
+            fileIdArr.push(oldValue?.imageId);
+          }
+        });
+      });
+    }
 
-  //   fileIdArr = extractOldData.filter(
-  //     (old, index) => old !== extractNewData[index]
-  //   );
+    const extractOldDefaultData = oldData?.documents?.default;
+    const extractNewDefaultData = newData?.documents?.default;
 
-  //   console.log(fileIdArr, "DOCUMENT FILE ID ARR");
-  // }
+    checkExistImageId(extractOldDefaultData, extractNewDefaultData);
+
+    const extractOldDynamicData = oldData?.documents?.dynamic;
+    const extractNewDynamicData = newData?.documents?.dynamic;
+
+    checkExistImageId(extractOldDynamicData, extractNewDynamicData);
+  }
 
   if (newData.drawing) {
     console.log(oldData.drawing, "OLD DATA");
@@ -1290,6 +1304,41 @@ async function run() {
     };
 
     const findApplication = await submitApplicationCollection.findOne(filter);
+
+    if (findApplication && newData?.siteInspection) {
+      console.log("Aslam");
+      const fileIdArr = [];
+      const oldSiteBoundariesImageIds =
+        findApplication?.siteInspection?.siteBoundaries
+          ?.siteBoundariesImageFilesId;
+
+      const newSiteBoundariesImageIds =
+        newData?.siteInspection?.siteBoundaries?.siteBoundariesImageFilesId;
+
+      console.log(oldSiteBoundariesImageIds, newSiteBoundariesImageIds);
+
+      if (oldSiteBoundariesImageIds && newSiteBoundariesImageIds) {
+        console.log("Aschi inside");
+        for (const key in newSiteBoundariesImageIds) {
+          if (
+            oldSiteBoundariesImageIds[key] !== newSiteBoundariesImageIds[key]
+          ) {
+            fileIdArr.push(oldSiteBoundariesImageIds[key]);
+          }
+        }
+      }
+
+      console.log(fileIdArr, "SITE INSPECTION FILE ID");
+
+      fileIdArr.length &&
+        fileIdArr.forEach((fileId) => {
+          if (fileId.length) {
+            authorize().then((authClient) =>
+              deleteGoggleDriveFile(authClient, fileId)
+            );
+          }
+        });
+    }
 
     // console.log(findApplication, "Find application");
 
