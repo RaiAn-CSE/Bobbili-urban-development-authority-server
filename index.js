@@ -281,6 +281,9 @@ async function run() {
   const shortfallCollection = client
     .db("Construction-Application")
     .collection("shortfallApplication");
+  const districtCollection = client
+    .db("Construction-Application")
+    .collection("districts");
 
   app.get("/documents", async (req, res) => {
     const result = await documentPageCollection.find({}).toArray();
@@ -346,7 +349,7 @@ async function run() {
     console.log(appNo, userId);
 
     let result;
-    if (role === "PS" && page === "submit") {
+    if (page === "submit") {
       result = await submitApplicationCollection.findOne({
         applicationNo: appNo,
       });
@@ -1149,6 +1152,12 @@ async function run() {
     } else {
       res.send({ serialNo: 1 });
     }
+  });
+
+  // get districts
+  app.get("/getDistricts", async (req, res) => {
+    const result = await districtCollection.find({}).toArray();
+    res.send(result);
   });
 
   // Store draft application in the database
