@@ -1595,27 +1595,56 @@ async function run() {
 run().catch(console.dir);
 
 const schedule = require("node-schedule");
-const taskTime = "0 0 * * *"; // Schedule for 12:00 AM
+async function performMongoDBAction() {
+  const client = new MongoClient(uri);
 
-function performMongoDBAction() {
-  MongoClient.connect(uri, { useNewUrlParser: true }, async (err, client) => {
-    if (err) {
-      console.error("Error connecting to MongoDB:", err);
-      return;
-    }
+  try {
+    await client.connect();
 
     const db = client.db("Construction-Application");
 
     // Your MongoDB operations here
-    // For example, you can insert a document into a collection.
-    const submitCollection = db.collection("submitCollection");
+    const collection = db.collection("submitApplication");
 
-    const allSubmitApplication = await submitCollection.find({}).toArray();
-    console.log(allSubmitApplication, "All submit Application");
-  });
+    const allSubmitApplications = await collection.find({}).toArray();
+    console.log(allSubmitApplications, "All");
+
+    const checkDaysPassed = (dateFromDB) => {
+      console.log(dateFromDB, "FIRST GET DATE");
+      const targetDate = new Date(dateFromDB);
+
+      const currentDate = new Date();
+
+      const timeDifference = currentDate - targetDate;
+
+      const daysDifference = timeDifference / (24 * 3600 * 1000);
+
+      console.log(daysDifference, "days difference");
+
+      // if (daysDifference >= 1 && daysDifference < 8) {
+      //   console.log(targetDate, daysDifference);
+      //   return 1;
+      // } else {
+      //   return 0;
+      // }
+    };
+
+    allSubmitApplications.forEach((eachApplication) => {
+      checkDaysPassed(eachApplication?.submitDate);
+    });
+
+    // const result = await collection.insertOne({ key: "value" });
+    // console.log("Document inserted:", result.ops[0]);
+  } catch (err) {
+    console.error(
+      "Error connecting to MongoDB or performing the operation:",
+      err
+    );
+  }
 }
 
-// Schedule the task to run at 12:00 AM daily
+// Schedule the task to run after a 30-second delay
+const taskTime = "0 0 * * *"; // 30 seconds from now
 const job = schedule.scheduleJob(taskTime, () => {
   performMongoDBAction();
 });
