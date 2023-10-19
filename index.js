@@ -1604,14 +1604,17 @@ async function performMongoDBAction() {
     const db = client.db("Construction-Application");
 
     // Your MongoDB operations here
-    const collection = db.collection("submitApplication");
+    const submitCollection = db.collection("submitApplication");
+    const approvedCollection = db.collection("approvedApplication");
 
-    const allSubmitApplications = await collection.find({}).toArray();
+    const allSubmitApplications = await submitCollection.find({}).toArray();
     console.log(allSubmitApplications, "All");
 
     const checkDaysPassed = (dateFromDB) => {
-      console.log(dateFromDB, "FIRST GET DATE");
-      const targetDate = new Date(dateFromDB);
+      const dateAsFormat = dateFromDB.split("-").reverse().join("-");
+      console.log(dateAsFormat, "FIRST GET DATE");
+
+      const targetDate = new Date(dateAsFormat);
 
       const currentDate = new Date();
 
@@ -1621,16 +1624,26 @@ async function performMongoDBAction() {
 
       console.log(daysDifference, "days difference");
 
-      // if (daysDifference >= 1 && daysDifference < 8) {
-      //   console.log(targetDate, daysDifference);
-      //   return 1;
-      // } else {
-      //   return 0;
-      // }
+      if (daysDifference > 15) {
+        console.log(targetDate, daysDifference);
+        return 1;
+      } else {
+        return 0;
+      }
     };
 
-    allSubmitApplications.forEach((eachApplication) => {
-      checkDaysPassed(eachApplication?.submitDate);
+    allSubmitApplications.forEach(async (eachApplication) => {
+      const isPassed = checkDaysPassed(eachApplication?.submitDate);
+      console.log(isPassed, "IS PASSED");
+      if (isPassed) {
+        eachApplication["status"] = "approved";
+        delete eachApplication["_id"];
+        await approvedCollection.insertOne({ ...eachApplication });
+
+        await submitCollection.deleteOne({
+          applicationNo: eachApplication.applicationNo,
+        });
+      }
     });
 
     // const result = await collection.insertOne({ key: "value" });
@@ -1645,6 +1658,8 @@ async function performMongoDBAction() {
 
 // Schedule the task to run after a 30-second delay
 const taskTime = "0 0 * * *"; // 30 seconds from now
+
+// const taskTime = new Date(new Date().getTime() + 5 * 1000); // 30 seconds from now
 const job = schedule.scheduleJob(taskTime, () => {
   performMongoDBAction();
 });
