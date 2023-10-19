@@ -281,6 +281,10 @@ async function run() {
   const shortfallCollection = client
     .db("Construction-Application")
     .collection("shortfallApplication");
+  const rejectedCollection = client
+    .db("Construction-Application")
+    .collection("rejectedApplication");
+
   const districtCollection = client
     .db("Construction-Application")
     .collection("districts");
@@ -600,6 +604,8 @@ async function run() {
 
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
+    const role = req.query.role;
+
     const totalSubmitApplications = await submitApplicationCollection
       .find({})
       .toArray();
@@ -609,38 +615,75 @@ async function run() {
     const totalShortfallApplications = await shortfallCollection
       .find({})
       .toArray();
+    const totalRejectedApplications = await rejectedCollection
+      .find({})
+      .toArray();
 
-    const total =
-      totalSubmitApplications.length +
-      totalApprovedApplications.length +
-      totalShortfallApplications.length;
+    if (role === "LTP" || role === "PS") {
+      const total =
+        totalRejectedApplications.length +
+        totalApprovedApplications.length +
+        totalShortfallApplications.length;
 
-    const submitAppCharges = extractCharges(totalSubmitApplications);
-    const approvedAppCharges = extractCharges(totalApprovedApplications);
-    const shortfallAppCharges = extractCharges(totalShortfallApplications);
+      const rejectedAppCharges = extractCharges(totalRejectedApplications);
+      const approvedAppCharges = extractCharges(totalApprovedApplications);
+      const shortfallAppCharges = extractCharges(totalShortfallApplications);
 
-    const charges = sumOfAllAppCharges(
-      submitAppCharges,
-      approvedAppCharges,
-      shortfallAppCharges
-    );
+      const charges = sumOfAllAppCharges(
+        rejectedAppCharges,
+        approvedAppCharges,
+        shortfallAppCharges
+      );
 
-    const result = {
-      applications: {
-        approvedApplications: totalApprovedApplications,
-        shortfallApplications: totalShortfallApplications,
-        submittedApplications: totalSubmitApplications,
-      },
-      totalApplication: {
-        received: totalApprovedApplications.length,
-        approved: totalApprovedApplications.length,
-        shortfall: totalShortfallApplications.length,
-        total,
-      },
-      charges,
-    };
+      const result = {
+        applications: {
+          approvedApplications: totalApprovedApplications,
+          shortfallApplications: totalShortfallApplications,
+          totalRejectedApplications: totalRejectedApplications,
+        },
+        totalApplication: {
+          rejected: totalRejectedApplications.length,
+          approved: totalApprovedApplications.length,
+          shortfall: totalShortfallApplications.length,
+          total,
+        },
+        charges,
+      };
 
-    res.send(result);
+      res.send(result);
+    } else {
+      const total =
+        totalSubmitApplications.length +
+        totalApprovedApplications.length +
+        totalShortfallApplications.length;
+
+      const submitAppCharges = extractCharges(totalSubmitApplications);
+      const approvedAppCharges = extractCharges(totalApprovedApplications);
+      const shortfallAppCharges = extractCharges(totalShortfallApplications);
+
+      const charges = sumOfAllAppCharges(
+        submitAppCharges,
+        approvedAppCharges,
+        shortfallAppCharges
+      );
+
+      const result = {
+        applications: {
+          approvedApplications: totalApprovedApplications,
+          shortfallApplications: totalShortfallApplications,
+          submittedApplications: totalSubmitApplications,
+        },
+        totalApplication: {
+          received: totalApprovedApplications.length,
+          approved: totalApprovedApplications.length,
+          shortfall: totalShortfallApplications.length,
+          total,
+        },
+        charges,
+      };
+
+      res.send(result);
+    }
   });
 
   // (async function hi() {
