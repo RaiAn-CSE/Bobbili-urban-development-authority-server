@@ -159,19 +159,33 @@ const deletePreviousFile = (oldData, newData) => {
   console.log(oldData, "OldData");
   console.log(newData, "NEW DATA");
 
-  // if (newData.documents) {
-  //   const extractOldData = Object.values(oldData.documents);
-  //   const extractNewData = Object.values(newData.documents);
+  if (newData.documents) {
+    // const extractOldData = Object.values(oldData.documents);
+    // const extractNewData = Object.values(newData.documents);
 
-  //   console.log(extractOldData, "Document OLD");
-  //   console.log(extractNewData, "DOCUMENT NEW");
+    function checkExistImageId(extractOldData, extractNewData) {
+      extractNewData.forEach((newValue) => {
+        extractOldData?.forEach((oldValue) => {
+          if (
+            oldValue?.id === newValue?.id &&
+            oldValue?.imageId !== newValue?.imageId
+          ) {
+            fileIdArr.push(oldValue?.imageId);
+          }
+        });
+      });
+    }
 
-  //   fileIdArr = extractOldData.filter(
-  //     (old, index) => old !== extractNewData[index]
-  //   );
+    const extractOldDefaultData = oldData?.documents?.default;
+    const extractNewDefaultData = newData?.documents?.default;
 
-  //   console.log(fileIdArr, "DOCUMENT FILE ID ARR");
-  // }
+    checkExistImageId(extractOldDefaultData, extractNewDefaultData);
+
+    const extractOldDynamicData = oldData?.documents?.dynamic;
+    const extractNewDynamicData = newData?.documents?.dynamic;
+
+    checkExistImageId(extractOldDynamicData, extractNewDynamicData);
+  }
 
   if (newData.drawing) {
     console.log(oldData.drawing, "OLD DATA");
@@ -267,6 +281,13 @@ async function run() {
   const shortfallCollection = client
     .db("Construction-Application")
     .collection("shortfallApplication");
+  const rejectedCollection = client
+    .db("Construction-Application")
+    .collection("rejectedApplication");
+
+  const districtCollection = client
+    .db("Construction-Application")
+    .collection("districts");
 
   app.get("/documents", async (req, res) => {
     const result = await documentPageCollection.find({}).toArray();
@@ -326,19 +347,31 @@ async function run() {
 
   // get specific applicationNo data
   app.get("/getApplicationData", async (req, res) => {
-    const { appNo, userId, role } = JSON.parse(req.query.data);
+    const { appNo, userId, role, page } = JSON.parse(req.query.data);
     console.log(req.query.data);
 
     console.log(appNo, userId);
 
     let result;
-    if (role === "PS") {
+    if (page === "submit") {
       result = await submitApplicationCollection.findOne({
         applicationNo: appNo,
       });
-    } else if (role === "LTP") {
+    }
+    if (role === "LTP" && page === "draft") {
       result = await draftApplicationCollection.findOne({
         userId,
+        applicationNo: appNo,
+      });
+    }
+
+    if (page === "approved") {
+      result = await approvedCollection.findOne({
+        applicationNo: appNo,
+      });
+    }
+    if (page === "shortfall") {
+      result = await shortfallCollection.findOne({
         applicationNo: appNo,
       });
     }
@@ -571,6 +604,8 @@ async function run() {
 
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
+    const role = req.query.role;
+
     const totalSubmitApplications = await submitApplicationCollection
       .find({})
       .toArray();
@@ -580,38 +615,75 @@ async function run() {
     const totalShortfallApplications = await shortfallCollection
       .find({})
       .toArray();
+    const totalRejectedApplications = await rejectedCollection
+      .find({})
+      .toArray();
 
-    const total =
-      totalSubmitApplications.length +
-      totalApprovedApplications.length +
-      totalShortfallApplications.length;
+    if (role === "LTP" || role === "PS") {
+      const total =
+        totalRejectedApplications.length +
+        totalApprovedApplications.length +
+        totalShortfallApplications.length;
 
-    const submitAppCharges = extractCharges(totalSubmitApplications);
-    const approvedAppCharges = extractCharges(totalApprovedApplications);
-    const shortfallAppCharges = extractCharges(totalShortfallApplications);
+      const rejectedAppCharges = extractCharges(totalRejectedApplications);
+      const approvedAppCharges = extractCharges(totalApprovedApplications);
+      const shortfallAppCharges = extractCharges(totalShortfallApplications);
 
-    const charges = sumOfAllAppCharges(
-      submitAppCharges,
-      approvedAppCharges,
-      shortfallAppCharges
-    );
+      const charges = sumOfAllAppCharges(
+        rejectedAppCharges,
+        approvedAppCharges,
+        shortfallAppCharges
+      );
 
-    const result = {
-      applications: {
-        approvedApplications: totalApprovedApplications,
-        shortfallApplications: totalShortfallApplications,
-        submittedApplications: totalSubmitApplications,
-      },
-      totalApplication: {
-        received: totalApprovedApplications.length,
-        approved: totalApprovedApplications.length,
-        shortfall: totalShortfallApplications.length,
-        total,
-      },
-      charges,
-    };
+      const result = {
+        applications: {
+          approvedApplications: totalApprovedApplications,
+          shortfallApplications: totalShortfallApplications,
+          totalRejectedApplications: totalRejectedApplications,
+        },
+        totalApplication: {
+          rejected: totalRejectedApplications.length,
+          approved: totalApprovedApplications.length,
+          shortfall: totalShortfallApplications.length,
+          total,
+        },
+        charges,
+      };
 
-    res.send(result);
+      res.send(result);
+    } else {
+      const total =
+        totalSubmitApplications.length +
+        totalApprovedApplications.length +
+        totalShortfallApplications.length;
+
+      const submitAppCharges = extractCharges(totalSubmitApplications);
+      const approvedAppCharges = extractCharges(totalApprovedApplications);
+      const shortfallAppCharges = extractCharges(totalShortfallApplications);
+
+      const charges = sumOfAllAppCharges(
+        submitAppCharges,
+        approvedAppCharges,
+        shortfallAppCharges
+      );
+
+      const result = {
+        applications: {
+          approvedApplications: totalApprovedApplications,
+          shortfallApplications: totalShortfallApplications,
+          submittedApplications: totalSubmitApplications,
+        },
+        totalApplication: {
+          received: totalApprovedApplications.length,
+          approved: totalApprovedApplications.length,
+          shortfall: totalShortfallApplications.length,
+          total,
+        },
+        charges,
+      };
+
+      res.send(result);
+    }
   });
 
   // (async function hi() {
@@ -879,11 +951,15 @@ async function run() {
         return application;
       }
 
-      if (date === "6 months" && checkLastSixAndTweleveMonths(dateFromDB, 6)) {
+      if (date === "1 months" && checkMonths(dateFromDB, 1)) {
         return application;
       }
 
-      if (date === "1 year" && checkLastSixAndTweleveMonths(dateFromDB, 12)) {
+      if (date === "6 months" && checkMonths(dateFromDB, 6)) {
+        return application;
+      }
+
+      if (date === "1 year" && checkMonths(dateFromDB, 12)) {
         return application;
       }
     });
@@ -969,7 +1045,7 @@ async function run() {
     }
   };
 
-  const checkLastSixAndTweleveMonths = (dateFromDB, duration) => {
+  const checkMonths = (dateFromDB, duration) => {
     const targetDate = new Date(dateFromDB);
 
     const currentDate = new Date();
@@ -1114,11 +1190,21 @@ async function run() {
         return a - b;
       });
 
+      console.log(applicationNumbers, "Application numbers");
+
       const lastSerialNumber = Math.max(...applicationNumbers);
+
+      console.log(lastSerialNumber, "SERIAL");
       res.send({ serialNo: lastSerialNumber + 1 });
     } else {
       res.send({ serialNo: 1 });
     }
+  });
+
+  // get districts
+  app.get("/getDistricts", async (req, res) => {
+    const result = await districtCollection.find({}).toArray();
+    res.send(result);
   });
 
   // Store draft application in the database
@@ -1274,6 +1360,41 @@ async function run() {
     };
 
     const findApplication = await submitApplicationCollection.findOne(filter);
+
+    if (findApplication && newData?.siteInspection) {
+      console.log("Aslam");
+      const fileIdArr = [];
+      const oldSiteBoundariesImageIds =
+        findApplication?.siteInspection?.siteBoundaries
+          ?.siteBoundariesImageFilesId;
+
+      const newSiteBoundariesImageIds =
+        newData?.siteInspection?.siteBoundaries?.siteBoundariesImageFilesId;
+
+      console.log(oldSiteBoundariesImageIds, newSiteBoundariesImageIds);
+
+      if (oldSiteBoundariesImageIds && newSiteBoundariesImageIds) {
+        console.log("Aschi inside");
+        for (const key in newSiteBoundariesImageIds) {
+          if (
+            oldSiteBoundariesImageIds[key] !== newSiteBoundariesImageIds[key]
+          ) {
+            fileIdArr.push(oldSiteBoundariesImageIds[key]);
+          }
+        }
+      }
+
+      console.log(fileIdArr, "SITE INSPECTION FILE ID");
+
+      fileIdArr.length &&
+        fileIdArr.forEach((fileId) => {
+          if (fileId.length) {
+            authorize().then((authClient) =>
+              deleteGoggleDriveFile(authClient, fileId)
+            );
+          }
+        });
+    }
 
     // console.log(findApplication, "Find application");
 
@@ -1519,6 +1640,76 @@ async function run() {
 }
 
 run().catch(console.dir);
+
+const schedule = require("node-schedule");
+async function performMongoDBAction() {
+  const client = new MongoClient(uri);
+
+  try {
+    await client.connect();
+
+    const db = client.db("Construction-Application");
+
+    // Your MongoDB operations here
+    const submitCollection = db.collection("submitApplication");
+    const approvedCollection = db.collection("approvedApplication");
+
+    const allSubmitApplications = await submitCollection.find({}).toArray();
+    console.log(allSubmitApplications, "All");
+
+    const checkDaysPassed = (dateFromDB) => {
+      const dateAsFormat = dateFromDB.split("-").reverse().join("-");
+      console.log(dateAsFormat, "FIRST GET DATE");
+
+      const targetDate = new Date(dateAsFormat);
+
+      const currentDate = new Date();
+
+      const timeDifference = currentDate - targetDate;
+
+      const daysDifference = timeDifference / (24 * 3600 * 1000);
+
+      console.log(daysDifference, "days difference");
+
+      if (daysDifference > 15) {
+        console.log(targetDate, daysDifference);
+        return 1;
+      } else {
+        return 0;
+      }
+    };
+
+    allSubmitApplications.forEach(async (eachApplication) => {
+      const isPassed = checkDaysPassed(eachApplication?.submitDate);
+      console.log(isPassed, "IS PASSED");
+      if (isPassed) {
+        eachApplication["status"] = "approved";
+        delete eachApplication["_id"];
+        await approvedCollection.insertOne({ ...eachApplication });
+
+        await submitCollection.deleteOne({
+          applicationNo: eachApplication.applicationNo,
+        });
+      }
+    });
+
+    // const result = await collection.insertOne({ key: "value" });
+    // console.log("Document inserted:", result.ops[0]);
+  } catch (err) {
+    console.error(
+      "Error connecting to MongoDB or performing the operation:",
+      err
+    );
+  }
+}
+
+// Schedule the task to run after a 30-second delay
+const taskTime = "0 0 * * *"; // 30 seconds from now
+
+// const taskTime = new Date(new Date().getTime() + 5 * 1000); // 30 seconds from now
+const job = schedule.scheduleJob(taskTime, () => {
+  performMongoDBAction();
+});
 
 // Export the Express API
 module.exports = app;
