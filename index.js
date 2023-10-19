@@ -908,11 +908,15 @@ async function run() {
         return application;
       }
 
-      if (date === "6 months" && checkLastSixAndTweleveMonths(dateFromDB, 6)) {
+      if (date === "1 months" && checkMonths(dateFromDB, 1)) {
         return application;
       }
 
-      if (date === "1 year" && checkLastSixAndTweleveMonths(dateFromDB, 12)) {
+      if (date === "6 months" && checkMonths(dateFromDB, 6)) {
+        return application;
+      }
+
+      if (date === "1 year" && checkMonths(dateFromDB, 12)) {
         return application;
       }
     });
@@ -998,7 +1002,7 @@ async function run() {
     }
   };
 
-  const checkLastSixAndTweleveMonths = (dateFromDB, duration) => {
+  const checkMonths = (dateFromDB, duration) => {
     const targetDate = new Date(dateFromDB);
 
     const currentDate = new Date();
