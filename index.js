@@ -1440,6 +1440,12 @@ async function run() {
     res.send(result);
   });
 
+  const findIndexOfExistDistrict = (oldLocations, districtName) => {
+    return oldLocations?.findIndex(
+      (eachLocation) => eachLocation.name === districtName
+    );
+  };
+
   // add district, mandal and village
   app.patch("/addLocation", async (req, res) => {
     console.log(req.query.data, "add LOCATION");
@@ -1452,6 +1458,12 @@ async function run() {
 
     let newLocations;
 
+    const districtName = data?.district;
+    const findDistrictIndex = findIndexOfExistDistrict(
+      oldLocations,
+      districtName
+    );
+
     if (data?.mandal?.length) {
       console.log(data?.mandal, "Mandal");
       if (data?.village?.length) {
@@ -1461,24 +1473,38 @@ async function run() {
       } else {
         const districtName = data?.district;
         const mandalName = data?.mandal;
+        if (findDistrictIndex === -1) {
+          oldLocations.push({
+            name: districtName,
+            mandal: [{ name: mandalName, village: [] }],
+          });
+        } else {
+          const mandalArr = oldLocations[findDistrictIndex]?.mandal;
+
+          const findIndexOfExistMandal = mandalArr?.findIndex(
+            (eachMandal) => eachMandal?.name === mandalName
+          );
+
+          console.log(findIndexOfExistMandal, "MANDAL INdex");
+
+          if (findIndexOfExistMandal === -1) {
+            mandalArr.push({ name: mandalName, village: [] });
+
+            oldLocations[findDistrictIndex]["mandal"] = mandalArr;
+          }
+        }
       }
     } else {
       console.log(data?.district, "District");
 
-      const districtName = data?.district;
-
-      const findDistrictIndex = oldLocations?.findIndex(
-        (eachLocation) => eachLocation.name === districtName
-      );
-
       if (findDistrictIndex === -1) {
         oldLocations.push({ name: districtName, mandal: [] });
       }
-      newLocations = [...oldLocations];
 
       console.log(findDistrictIndex);
     }
 
+    newLocations = [...oldLocations];
     const updateDoc = {
       $set: { district: newLocations },
     };
@@ -1507,6 +1533,12 @@ async function run() {
 
     let newLocation;
 
+    const districtName = data?.district;
+    const findDistrictIndex = findIndexOfExistDistrict(
+      oldLocations,
+      districtName
+    );
+
     if (data?.mandal?.length) {
       console.log(data?.mandal, "Mandal");
       if (data?.village?.length) {
@@ -1516,15 +1548,37 @@ async function run() {
       } else {
         const districtName = data?.district;
         const mandalName = data?.mandal;
+
+        if (findDistrictIndex === -1) {
+          res.send({ msg: "Location not found" });
+          return;
+        } else {
+          console.log(findDistrictIndex, "district index");
+
+          console.log(
+            oldLocations[findDistrictIndex]?.mandal,
+            "FIND VALUE OF INDEX"
+          );
+          const mandalArr = oldLocations[findDistrictIndex]?.mandal;
+
+          const findIndexOfExistMandal = mandalArr?.findIndex(
+            (eachMandal) => eachMandal?.name === mandalName
+          );
+
+          console.log(findIndexOfExistMandal, "MANDAL INdex");
+
+          if (findIndexOfExistMandal === -1) {
+            res.send({ msg: "Location not found" });
+            return;
+          } else {
+            mandalArr.splice(mandalArr[findIndexOfExistMandal], 1);
+
+            oldLocations[findDistrictIndex]["mandal"] = [...mandalArr];
+          }
+        }
       }
     } else {
       console.log(data?.district, "District");
-
-      const districtName = data?.district;
-
-      const findDistrictIndex = oldLocations?.findIndex(
-        (eachLocation) => eachLocation.name === districtName
-      );
 
       if (findDistrictIndex === -1) {
         res.send({ msg: "Location not found" });
