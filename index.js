@@ -1440,6 +1440,118 @@ async function run() {
     res.send(result);
   });
 
+  // add district, mandal and village
+  app.patch("/addLocation", async (req, res) => {
+    console.log(req.query.data, "add LOCATION");
+    const data = JSON.parse(req.query.data);
+
+    const resultOfOldValue = await districtCollection.find({}).toArray();
+
+    const oldLocations = resultOfOldValue[0]?.district;
+    console.log(oldLocations, "OLD");
+
+    let newLocations;
+
+    if (data?.mandal?.length) {
+      console.log(data?.mandal, "Mandal");
+      if (data?.village?.length) {
+        const districtName = data?.district;
+        const mandalName = data?.mandal;
+        const villageName = data?.village;
+      } else {
+        const districtName = data?.district;
+        const mandalName = data?.mandal;
+      }
+    } else {
+      console.log(data?.district, "District");
+
+      const districtName = data?.district;
+
+      const findDistrictIndex = oldLocations?.findIndex(
+        (eachLocation) => eachLocation.name === districtName
+      );
+
+      if (findDistrictIndex === -1) {
+        oldLocations.push({ name: districtName, mandal: [] });
+      }
+      newLocations = [...oldLocations];
+
+      console.log(findDistrictIndex);
+    }
+
+    const updateDoc = {
+      $set: { district: newLocations },
+    };
+
+    const filter = { _id: new ObjectId(resultOfOldValue[0]?._id) };
+
+    const result = await districtCollection.updateOne(filter, updateDoc);
+    console.log(result, "RESULT LOC");
+
+    if (result.acknowledged) {
+      res.send({ msg: "Location added successfully", response: result });
+    } else {
+      res.send({ msg: "Failed to add location", response: result });
+    }
+  });
+
+  // remove location
+  app.patch("/removeLocation", async (req, res) => {
+    console.log(req.query.data, "remove LOCATION");
+    const data = JSON.parse(req.query.data);
+
+    const resultOfOldValue = await districtCollection.find({}).toArray();
+
+    const oldLocations = resultOfOldValue[0]?.district;
+    console.log(oldLocations, "OLD");
+
+    let newLocation;
+
+    if (data?.mandal?.length) {
+      console.log(data?.mandal, "Mandal");
+      if (data?.village?.length) {
+        const districtName = data?.district;
+        const mandalName = data?.mandal;
+        const villageName = data?.village;
+      } else {
+        const districtName = data?.district;
+        const mandalName = data?.mandal;
+      }
+    } else {
+      console.log(data?.district, "District");
+
+      const districtName = data?.district;
+
+      const findDistrictIndex = oldLocations?.findIndex(
+        (eachLocation) => eachLocation.name === districtName
+      );
+
+      if (findDistrictIndex === -1) {
+        res.send({ msg: "Location not found" });
+        return;
+      } else {
+        oldLocations.splice(findDistrictIndex, 1);
+      }
+    }
+
+    newLocation = [...oldLocations];
+
+    const updateDoc = {
+      $set: { district: newLocation },
+    };
+
+    const filter = { _id: new ObjectId(resultOfOldValue[0]?._id) };
+
+    const result = await districtCollection.updateOne(filter, updateDoc);
+    console.log(result, "RESULT LOC");
+
+    if (result.acknowledged) {
+      res.send({ msg: "Location removed successfully", response: result });
+    } else {
+      res.send({ msg: "Failed to remove location", response: result });
+    }
+  });
+
   // delete an individual user
   app.delete("/deleteUser/:id", async (req, res) => {
     const userId = req.params.id;
