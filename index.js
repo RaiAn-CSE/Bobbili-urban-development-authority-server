@@ -491,7 +491,24 @@ async function run() {
 
   // get all submit application data for PS
   app.get("/submitApplications", async (req, res) => {
-    const result = await submitApplicationCollection.find({}).toArray();
+    const id = req.query.userId;
+
+    const findPsInfo = await userCollection.findOne({ _id: new ObjectId(id) });
+
+    console.log(findPsInfo);
+
+    const query = {
+      "buildingInfo.generalInformation.district": findPsInfo.district,
+      "buildingInfo.generalInformation.mandal": findPsInfo.mandal,
+      "buildingInfo.generalInformation.gramaPanchayat":
+        findPsInfo?.gramaPanchayat,
+    };
+
+    console.log(query, "Query");
+
+    const result = await submitApplicationCollection.find(query).toArray();
+
+    console.log(result, "Result");
     res.send(result);
   });
 
@@ -604,19 +621,40 @@ async function run() {
 
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
-    const role = req.query.role;
+    const userInfo = JSON.parse(req.query.data);
+
+    const role = userInfo.role;
+
+    let query = {};
+    if (role === "PS") {
+      const findPsInfo = await userCollection.findOne({
+        _id: new ObjectId(userInfo?._id),
+      });
+
+      console.log(findPsInfo);
+
+      query = {
+        "buildingInfo.generalInformation.district": findPsInfo.district,
+        "buildingInfo.generalInformation.mandal": findPsInfo.mandal,
+        "buildingInfo.generalInformation.gramaPanchayat":
+          findPsInfo?.gramaPanchayat,
+      };
+    }
+
+    console.log(userInfo, "USER INFO");
+    console.log(query, "USER INFO");
 
     const totalSubmitApplications = await submitApplicationCollection
-      .find({})
+      .find(query)
       .toArray();
     const totalApprovedApplications = await approvedCollection
-      .find({})
+      .find(query)
       .toArray();
     const totalShortfallApplications = await shortfallCollection
-      .find({})
+      .find(query)
       .toArray();
     const totalRejectedApplications = await rejectedCollection
-      .find({})
+      .find(query)
       .toArray();
 
     if (role === "LTP" || role === "PS") {
@@ -624,6 +662,11 @@ async function run() {
         totalRejectedApplications.length +
         totalApprovedApplications.length +
         totalShortfallApplications.length;
+
+      console.log(totalApprovedApplications, "APPROVED");
+      console.log(totalShortfallApplications, "SHORTFALL");
+
+      console.log(total, "TOTAL");
 
       const rejectedAppCharges = extractCharges(totalRejectedApplications);
       const approvedAppCharges = extractCharges(totalApprovedApplications);
@@ -685,6 +728,14 @@ async function run() {
       res.send(result);
     }
   });
+
+  // get specific outward applications
+  // app.get("/getOutwardApplications",async(req,res)=>{
+  //   const id =req.query.userId;
+
+  //   const findPsInfo=await userCollection.findOne({_id:new ObjectId(id)})
+
+  // })
 
   // (async function hi() {
 
