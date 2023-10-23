@@ -1785,10 +1785,12 @@ async function run() {
   });
 
   app.delete("/decisionOfPs", async (req, res) => {
-    const appNo = req.query.appNo;
+    const { applicationNo, trackPSAction } = JSON.parse(req.query.data);
+
+    console.log(req.query.data, "DECIsion");
 
     const filter = {
-      applicationNo: appNo,
+      applicationNo: applicationNo,
     };
 
     const findApplication = await submitApplicationCollection.findOne(filter);
@@ -1803,91 +1805,48 @@ async function run() {
 
     const psSubmitDate = `${day}-${month}-${year}`;
 
-    // console.log(psSubmitDate);
+    const status =
+      (trackPSAction === "reject" && "Rejected") ||
+      (trackPSAction === "approved" && "Approved") ||
+      (trackPSAction === "shortfall" && "Shortfall");
 
-    const documentPageDecision =
-      findApplication?.psDocumentPageObservation?.approved === "true" ? 1 : 0;
+    console.log(status, "Status");
 
-    const drawingPageDecision =
-      findApplication?.psDrawingPageObservation?.approved === "true" ? 1 : 0;
+    const updateData = { ...findApplication, psSubmitDate, status };
 
-    const siteInspectionPageDecision =
-      findApplication?.siteInspection?.decision?.toLowerCase() === "approved"
-        ? 1
-        : 0;
-
-    // console.log(
-    //   documentPageDecision,
-    //   drawingPageDecision,
-    //   siteInspectionPageDecision
-    // );
-
-    // update application status
-    const updateStatusOfApplication = async (psSubmitData, isApproved) => {
-      const updateData = { ...findApplication, ...psSubmitData };
-
-      console.log(updateData, "updateDoc");
-      const updateDoc = {
-        $set: updateData,
-      };
-
-      const result = await submitApplicationCollection.updateOne(
-        filter,
-        updateDoc
-      );
-
-      if (result.acknowledged) {
-        const findApplication = await submitApplicationCollection.findOne(
-          filter
-        );
-
-        console.log(findApplication, "AFTER SUBMITTED DATA");
-
-        let insertedData;
-
-        if (isApproved) {
-          insertedData = await approvedCollection.insertOne(findApplication);
-        } else {
-          insertedData = await shortfallCollection.insertOne(findApplication);
-        }
-
-        const deleteData = await submitApplicationCollection.deleteOne(filter);
-
-        res.send(insertedData);
-      } else {
-        res.send({ statusText: "Server Error" });
-      }
+    console.log(updateData, "updateDoc");
+    const updateDoc = {
+      $set: updateData,
     };
 
-    if (
-      documentPageDecision &&
-      drawingPageDecision &&
-      siteInspectionPageDecision
-    ) {
-      const psSubmitData = { psSubmitDate, status: "approved" };
-      console.log("Approved");
-      updateStatusOfApplication(psSubmitData, 1);
+    const result = await submitApplicationCollection.updateOne(
+      filter,
+      updateDoc
+    );
 
-      // if (updateStatus) {
-      //   const findApplication = await submitApplicationCollection.findOne(
-      //     filter
-      //   );
-      //   result = await approvedCollection.insertOne(findApplication);
+    if (result.acknowledged) {
+      const findApplication = await submitApplicationCollection.findOne(filter);
+
+      console.log(findApplication, "AFTER SUBMITTED DATA");
+
+      let insertedData;
+
+      // if (isApproved) {
+      //   insertedData = await approvedCollection.insertOne(findApplication);
+      // } else {
+      //   insertedData = await shortfallCollection.insertOne(findApplication);
       // }
+
+      if (trackPSAction === "reject") {
+        insertedData = await rejectedCollection.insertOne(findApplication);
+      }
+
+      const deleteData = await submitApplicationCollection.deleteOne(filter);
+
+      res.send(insertedData);
     } else {
-      console.log("Shortfall");
-      const psSubmitData = { psSubmitDate, status: "shortfall" };
-      updateStatusOfApplication(psSubmitData, 0);
-      // if (updateStatus) {
-      //   const findApplication = await submitApplicationCollection.findOne(
-      //     filter
-      //   );
-      //   result = await shortfallCollection.insertOne(findApplication);
-      // }
+      res.send({ statusText: "Server Error" });
     }
-
-    // console.log(result);
-    // res.send(result);
   });
 }
 
