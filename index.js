@@ -491,7 +491,24 @@ async function run() {
 
   // get all submit application data for PS
   app.get("/submitApplications", async (req, res) => {
-    const result = await submitApplicationCollection.find({}).toArray();
+    const id = req.query.userId;
+
+    const findPsInfo = await userCollection.findOne({ _id: new ObjectId(id) });
+
+    console.log(findPsInfo);
+
+    const query = {
+      "buildingInfo.generalInformation.district": findPsInfo.district,
+      "buildingInfo.generalInformation.mandal": findPsInfo.mandal,
+      "buildingInfo.generalInformation.gramaPanchayat":
+        findPsInfo?.gramaPanchayat,
+    };
+
+    console.log(query, "Query");
+
+    const result = await submitApplicationCollection.find(query).toArray();
+
+    console.log(result, "Result");
     res.send(result);
   });
 
@@ -604,19 +621,40 @@ async function run() {
 
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
-    const role = req.query.role;
+    const userInfo = JSON.parse(req.query.data);
+
+    const role = userInfo.role;
+
+    let query = {};
+    if (role === "PS") {
+      const findPsInfo = await userCollection.findOne({
+        _id: new ObjectId(userInfo?._id),
+      });
+
+      console.log(findPsInfo);
+
+      query = {
+        "buildingInfo.generalInformation.district": findPsInfo.district,
+        "buildingInfo.generalInformation.mandal": findPsInfo.mandal,
+        "buildingInfo.generalInformation.gramaPanchayat":
+          findPsInfo?.gramaPanchayat,
+      };
+    }
+
+    console.log(userInfo, "USER INFO");
+    console.log(query, "USER INFO");
 
     const totalSubmitApplications = await submitApplicationCollection
-      .find({})
+      .find(query)
       .toArray();
     const totalApprovedApplications = await approvedCollection
-      .find({})
+      .find(query)
       .toArray();
     const totalShortfallApplications = await shortfallCollection
-      .find({})
+      .find(query)
       .toArray();
     const totalRejectedApplications = await rejectedCollection
-      .find({})
+      .find(query)
       .toArray();
 
     if (role === "LTP" || role === "PS") {
@@ -624,6 +662,11 @@ async function run() {
         totalRejectedApplications.length +
         totalApprovedApplications.length +
         totalShortfallApplications.length;
+
+      console.log(totalApprovedApplications, "APPROVED");
+      console.log(totalShortfallApplications, "SHORTFALL");
+
+      console.log(total, "TOTAL");
 
       const rejectedAppCharges = extractCharges(totalRejectedApplications);
       const approvedAppCharges = extractCharges(totalApprovedApplications);
@@ -685,6 +728,14 @@ async function run() {
       res.send(result);
     }
   });
+
+  // get specific outward applications
+  // app.get("/getOutwardApplications",async(req,res)=>{
+  //   const id =req.query.userId;
+
+  //   const findPsInfo=await userCollection.findOne({_id:new ObjectId(id)})
+
+  // })
 
   // (async function hi() {
 
@@ -1440,6 +1491,207 @@ async function run() {
     res.send(result);
   });
 
+  const findIndexOfExistDistrict = (oldLocations, districtName) => {
+    return oldLocations?.findIndex(
+      (eachLocation) => eachLocation.name === districtName
+    );
+  };
+
+  // add district, mandal and village
+  app.patch("/addLocation", async (req, res) => {
+    console.log(req.query.data, "add LOCATION");
+    const data = JSON.parse(req.query.data);
+
+    const resultOfOldValue = await districtCollection.find({}).toArray();
+
+    const oldLocations = resultOfOldValue[0]?.district;
+    console.log(oldLocations, "OLD");
+
+    let newLocations;
+
+    const districtName = data?.district;
+    const findDistrictIndex = findIndexOfExistDistrict(
+      oldLocations,
+      districtName
+    );
+
+    if (data?.mandal?.length) {
+      console.log(data?.mandal, "Mandal");
+
+      const mandalName = data?.mandal;
+
+      const mandalArr = oldLocations[findDistrictIndex]?.mandal;
+
+      const findIndexOfExistMandal = mandalArr?.findIndex(
+        (eachMandal) => eachMandal?.name === mandalName
+      );
+
+      if (data?.village?.length) {
+        const villageName = data?.village;
+
+        if (findIndexOfExistMandal === -1) {
+          mandalArr.push({ name: mandalName, village: [villageName] });
+        } else {
+          const isVillageNameExist = mandalArr[findIndexOfExistMandal][
+            "village"
+          ].findIndex((eachVillageName) => eachVillageName === villageName);
+
+          if (isVillageNameExist === -1) {
+            mandalArr[findIndexOfExistMandal]["village"].push(villageName);
+          }
+        }
+
+        oldLocations[findDistrictIndex]["mandal"] = mandalArr;
+      } else {
+        if (findDistrictIndex === -1) {
+          oldLocations.push({
+            name: districtName,
+            mandal: [{ name: mandalName, village: [] }],
+          });
+        } else {
+          console.log(findIndexOfExistMandal, "MANDAL INdex");
+
+          if (findIndexOfExistMandal === -1) {
+            mandalArr.push({ name: mandalName, village: [] });
+
+            oldLocations[findDistrictIndex]["mandal"] = mandalArr;
+          }
+        }
+      }
+    } else {
+      console.log(data?.district, "District");
+
+      if (findDistrictIndex === -1) {
+        oldLocations.push({ name: districtName, mandal: [] });
+      }
+
+      console.log(findDistrictIndex);
+    }
+
+    newLocations = [...oldLocations];
+    const updateDoc = {
+      $set: { district: newLocations },
+    };
+
+    const filter = { _id: new ObjectId(resultOfOldValue[0]?._id) };
+
+    const result = await districtCollection.updateOne(filter, updateDoc);
+    console.log(result, "RESULT LOC");
+
+    if (result.acknowledged) {
+      res.send({ msg: "Location added successfully", response: result });
+    } else {
+      res.send({ msg: "Failed to add location", response: result });
+    }
+  });
+
+  // remove location
+  app.patch("/removeLocation", async (req, res) => {
+    console.log(req.query.data, "remove LOCATION");
+    const data = JSON.parse(req.query.data);
+
+    const resultOfOldValue = await districtCollection.find({}).toArray();
+
+    const oldLocations = resultOfOldValue[0]?.district;
+    console.log(oldLocations, "OLD");
+
+    let newLocation;
+
+    const districtName = data?.district;
+    const findDistrictIndex = findIndexOfExistDistrict(
+      oldLocations,
+      districtName
+    );
+
+    const mandalName = data?.mandal;
+    const mandalArr = oldLocations[findDistrictIndex]?.mandal;
+
+    const findIndexOfExistMandal = mandalArr?.findIndex(
+      (eachMandal) => eachMandal?.name === mandalName
+    );
+
+    if (data?.mandal?.length) {
+      console.log(data?.mandal, "Mandal");
+      if (data?.village?.length) {
+        const villageName = data?.village;
+
+        if (findIndexOfExistMandal === -1) {
+          res.send({ msg: "Location not found" });
+          return;
+        } else {
+          const isVillageExist = mandalArr[
+            findIndexOfExistMandal
+          ]?.village.findIndex((eachVillage) => eachVillage === villageName);
+
+          console.log(isVillageExist, villageName, "VILLAGE EXIST");
+          console.log(
+            mandalArr[findIndexOfExistMandal]?.village[isVillageExist]
+          );
+          if (isVillageExist === -1) {
+            res.send({ msg: "Location not found" });
+            return;
+          } else {
+            mandalArr[findIndexOfExistMandal]?.village.splice(
+              isVillageExist,
+              1
+            );
+
+            console.log(mandalArr[findIndexOfExistMandal]?.village);
+            oldLocations[findDistrictIndex]["mandal"] = [...mandalArr];
+          }
+        }
+      } else {
+        if (findDistrictIndex === -1) {
+          res.send({ msg: "Location not found" });
+          return;
+        } else {
+          console.log(findDistrictIndex, "district index");
+
+          console.log(
+            oldLocations[findDistrictIndex]?.mandal,
+            "FIND VALUE OF INDEX"
+          );
+
+          console.log(findIndexOfExistMandal, "MANDAL INdex");
+
+          if (findIndexOfExistMandal === -1) {
+            res.send({ msg: "Location not found" });
+            return;
+          } else {
+            mandalArr.splice(mandalArr[findIndexOfExistMandal], 1);
+            oldLocations[findDistrictIndex]["mandal"] = [...mandalArr];
+          }
+        }
+      }
+    } else {
+      console.log(data?.district, "District");
+
+      if (findDistrictIndex === -1) {
+        res.send({ msg: "Location not found" });
+        return;
+      } else {
+        oldLocations.splice(findDistrictIndex, 1);
+      }
+    }
+
+    newLocation = [...oldLocations];
+
+    const updateDoc = {
+      $set: { district: newLocation },
+    };
+
+    const filter = { _id: new ObjectId(resultOfOldValue[0]?._id) };
+
+    const result = await districtCollection.updateOne(filter, updateDoc);
+    console.log(result, "RESULT LOC");
+
+    if (result.acknowledged) {
+      res.send({ msg: "Location removed successfully", response: result });
+    } else {
+      res.send({ msg: "Failed to remove location", response: result });
+    }
+  });
+
   // delete an individual user
   app.delete("/deleteUser/:id", async (req, res) => {
     const userId = req.params.id;
@@ -1533,10 +1785,12 @@ async function run() {
   });
 
   app.delete("/decisionOfPs", async (req, res) => {
-    const appNo = req.query.appNo;
+    const { applicationNo, trackPSAction } = JSON.parse(req.query.data);
+
+    console.log(req.query.data, "DECIsion");
 
     const filter = {
-      applicationNo: appNo,
+      applicationNo: applicationNo,
     };
 
     const findApplication = await submitApplicationCollection.findOne(filter);
@@ -1551,91 +1805,48 @@ async function run() {
 
     const psSubmitDate = `${day}-${month}-${year}`;
 
-    // console.log(psSubmitDate);
+    const status =
+      (trackPSAction === "reject" && "Rejected") ||
+      (trackPSAction === "approved" && "Approved") ||
+      (trackPSAction === "shortfall" && "Shortfall");
 
-    const documentPageDecision =
-      findApplication?.psDocumentPageObservation?.approved === "true" ? 1 : 0;
+    console.log(status, "Status");
 
-    const drawingPageDecision =
-      findApplication?.psDrawingPageObservation?.approved === "true" ? 1 : 0;
+    const updateData = { ...findApplication, psSubmitDate, status };
 
-    const siteInspectionPageDecision =
-      findApplication?.siteInspection?.decision?.toLowerCase() === "approved"
-        ? 1
-        : 0;
-
-    // console.log(
-    //   documentPageDecision,
-    //   drawingPageDecision,
-    //   siteInspectionPageDecision
-    // );
-
-    // update application status
-    const updateStatusOfApplication = async (psSubmitData, isApproved) => {
-      const updateData = { ...findApplication, ...psSubmitData };
-
-      console.log(updateData, "updateDoc");
-      const updateDoc = {
-        $set: updateData,
-      };
-
-      const result = await submitApplicationCollection.updateOne(
-        filter,
-        updateDoc
-      );
-
-      if (result.acknowledged) {
-        const findApplication = await submitApplicationCollection.findOne(
-          filter
-        );
-
-        console.log(findApplication, "AFTER SUBMITTED DATA");
-
-        let insertedData;
-
-        if (isApproved) {
-          insertedData = await approvedCollection.insertOne(findApplication);
-        } else {
-          insertedData = await shortfallCollection.insertOne(findApplication);
-        }
-
-        const deleteData = await submitApplicationCollection.deleteOne(filter);
-
-        res.send(insertedData);
-      } else {
-        res.send({ statusText: "Server Error" });
-      }
+    console.log(updateData, "updateDoc");
+    const updateDoc = {
+      $set: updateData,
     };
 
-    if (
-      documentPageDecision &&
-      drawingPageDecision &&
-      siteInspectionPageDecision
-    ) {
-      const psSubmitData = { psSubmitDate, status: "approved" };
-      console.log("Approved");
-      updateStatusOfApplication(psSubmitData, 1);
+    const result = await submitApplicationCollection.updateOne(
+      filter,
+      updateDoc
+    );
 
-      // if (updateStatus) {
-      //   const findApplication = await submitApplicationCollection.findOne(
-      //     filter
-      //   );
-      //   result = await approvedCollection.insertOne(findApplication);
+    if (result.acknowledged) {
+      const findApplication = await submitApplicationCollection.findOne(filter);
+
+      console.log(findApplication, "AFTER SUBMITTED DATA");
+
+      let insertedData;
+
+      // if (isApproved) {
+      //   insertedData = await approvedCollection.insertOne(findApplication);
+      // } else {
+      //   insertedData = await shortfallCollection.insertOne(findApplication);
       // }
+
+      if (trackPSAction === "reject") {
+        insertedData = await rejectedCollection.insertOne(findApplication);
+      }
+
+      const deleteData = await submitApplicationCollection.deleteOne(filter);
+
+      res.send(insertedData);
     } else {
-      console.log("Shortfall");
-      const psSubmitData = { psSubmitDate, status: "shortfall" };
-      updateStatusOfApplication(psSubmitData, 0);
-      // if (updateStatus) {
-      //   const findApplication = await submitApplicationCollection.findOne(
-      //     filter
-      //   );
-      //   result = await shortfallCollection.insertOne(findApplication);
-      // }
+      res.send({ statusText: "Server Error" });
     }
-
-    // console.log(result);
-    // res.send(result);
   });
 }
 
