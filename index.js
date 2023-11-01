@@ -1258,6 +1258,17 @@ async function run() {
     res.send(result);
   });
 
+  // get all rejected applications
+  app.get("/getRejectedApplications", async (req, res) => {
+    const userId = req?.query?.userId;
+
+    console.log(userId, "User id");
+    const result = await rejectedCollection.find({ userId }).toArray();
+
+    console.log(result, "Rejected");
+    res.send(result);
+  });
+
   // Store draft application in the database
   app.post("/addApplication", async (req, res) => {
     const data = req.body;
