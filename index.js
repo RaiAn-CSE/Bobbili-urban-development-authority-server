@@ -623,7 +623,7 @@ async function run() {
   app.get("/totalApplications", async (req, res) => {
     const userInfo = JSON.parse(req.query.data);
 
-    const role = userInfo.role;
+    const role = userInfo?.role;
 
     let query = {};
     if (role === "PS") {
