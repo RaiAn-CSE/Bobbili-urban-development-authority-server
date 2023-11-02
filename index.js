@@ -622,9 +622,10 @@ async function run() {
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
     let role;
+    let userInfo;
 
     if (req?.query?.data) {
-      const userInfo = JSON.parse(req?.query?.data);
+      userInfo = JSON.parse(req?.query?.data);
       role = userInfo?.role;
     }
 
