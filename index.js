@@ -621,9 +621,12 @@ async function run() {
 
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
-    const userInfo = JSON.parse(req.query.data);
+    let role;
 
-    const role = userInfo?.role;
+    if (req?.query?.data) {
+      const userInfo = JSON.parse(req?.query?.data);
+      role = userInfo?.role;
+    }
 
     let query = {};
     if (role === "PS") {
@@ -641,7 +644,7 @@ async function run() {
       };
     }
 
-    console.log(userInfo, "USER INFO");
+    console.log(role, "role");
     console.log(query, "USER INFO");
 
     const totalSubmitApplications = await submitApplicationCollection
