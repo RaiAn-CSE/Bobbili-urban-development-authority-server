@@ -621,9 +621,13 @@ async function run() {
 
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
-    const userInfo = JSON.parse(req.query.data);
+    let role;
+    let userInfo;
 
-    const role = userInfo.role;
+    if (req?.query?.data) {
+      userInfo = JSON.parse(req?.query?.data);
+      role = userInfo?.role;
+    }
 
     let query = {};
     if (role === "PS") {
@@ -641,7 +645,7 @@ async function run() {
       };
     }
 
-    console.log(userInfo, "USER INFO");
+    console.log(role, "role");
     console.log(query, "USER INFO");
 
     const totalSubmitApplications = await submitApplicationCollection
@@ -1255,6 +1259,17 @@ async function run() {
   // get districts
   app.get("/getDistricts", async (req, res) => {
     const result = await districtCollection.find({}).toArray();
+    res.send(result);
+  });
+
+  // get all rejected applications
+  app.get("/getRejectedApplications", async (req, res) => {
+    const userId = req?.query?.userId;
+
+    console.log(userId, "User id");
+    const result = await rejectedCollection.find({ userId }).toArray();
+
+    console.log(result, "Rejected");
     res.send(result);
   });
 
