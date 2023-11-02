@@ -1846,14 +1846,12 @@ async function run() {
 
       let insertedData;
 
-      // if (isApproved) {
-      //   insertedData = await approvedCollection.insertOne(findApplication);
-      // } else {
-      //   insertedData = await shortfallCollection.insertOne(findApplication);
-      // }
-
       if (trackPSAction === "reject") {
         insertedData = await rejectedCollection.insertOne(findApplication);
+      } else if (trackPSAction === "approved") {
+        insertedData = await approvedCollection.insertOne(findApplication);
+      } else if (trackPSAction === "shortfall") {
+        insertedData = await shortfallCollection.insertOne(findApplication);
       }
 
       const deleteData = await submitApplicationCollection.deleteOne(filter);
