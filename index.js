@@ -1272,72 +1272,6 @@ async function run() {
     res.send(result);
   });
 
-  // Store draft application in the database
-  app.post("/addApplication", async (req, res) => {
-    const data = req.body;
-    console.log(data);
-    const result = await draftApplicationCollection.insertOne(data);
-    res.send(result);
-  });
-
-  // store user data
-  app.post("/addUser", async (req, res) => {
-    const userInfo = req.body;
-
-    console.log(userInfo);
-
-    const findSameIdPerson = await userCollection.findOne({
-      userId: userInfo.userId,
-    });
-    console.log(findSameIdPerson);
-
-    if (findSameIdPerson) {
-      res.send({
-        result: 0,
-        message: "User id already exist",
-      });
-    } else {
-      const result = await userCollection.insertOne(userInfo);
-      res.send(result);
-    }
-  });
-
-  app.post("/upload", upload.single("file"), async (req, res) => {
-    // Access uploaded file via req.file
-
-    const pages = {
-      document: "1xfk1StJ2AscqxDDoLwNj3tPRUS_dLpw5",
-      drawing: "1wRElw-4faLOZWQjV4dzcQ2lHG-IhMhQd",
-      payment: "1pWE9tZrfsjiZxNORP5ZwL7Bm72S7JKpY",
-      siteInspection: "1uVuXJz9kfWXyAg5ENfEiWL2qfDtCMa_Z",
-    };
-
-    console.log("Aschi");
-    const file = req.file;
-
-    const page = req.query.page;
-
-    const folderId = pages[page];
-
-    console.log(folderId, file, page);
-
-    // console.log(file);
-    if (!file) {
-      return res.status(400).send({ msg: "No file uploaded." });
-    }
-
-    authorize()
-      .then((authClient) => uploadFile(authClient, file, folderId))
-      .then((result) => {
-        console.log(result, "RESPONSE");
-        res.send({ msg: "Successfully uploaded", fileId: result });
-      })
-      .catch((err) => {
-        console.log(err);
-        res.send({ msg: "Something went wrong" });
-      });
-  });
-
   // async function downloadFile(authClient, fileName, fileId) {
   //   const drive = google.drive({ version: "v3", auth: authClient });
 
@@ -1409,6 +1343,72 @@ async function run() {
     authorize().then((authClient) =>
       downloadFile(authClient, fileName, fileId, res)
     );
+  });
+
+  // Store draft application in the database
+  app.post("/addApplication", async (req, res) => {
+    const data = req.body;
+    console.log(data);
+    const result = await draftApplicationCollection.insertOne(data);
+    res.send(result);
+  });
+
+  // store user data
+  app.post("/addUser", async (req, res) => {
+    const userInfo = req.body;
+
+    console.log(userInfo);
+
+    const findSameIdPerson = await userCollection.findOne({
+      userId: userInfo.userId,
+    });
+    console.log(findSameIdPerson);
+
+    if (findSameIdPerson) {
+      res.send({
+        result: 0,
+        message: "User id already exist",
+      });
+    } else {
+      const result = await userCollection.insertOne(userInfo);
+      res.send(result);
+    }
+  });
+
+  app.post("/upload", upload.single("file"), async (req, res) => {
+    // Access uploaded file via req.file
+
+    const pages = {
+      document: "1xfk1StJ2AscqxDDoLwNj3tPRUS_dLpw5",
+      drawing: "1wRElw-4faLOZWQjV4dzcQ2lHG-IhMhQd",
+      payment: "1pWE9tZrfsjiZxNORP5ZwL7Bm72S7JKpY",
+      siteInspection: "1uVuXJz9kfWXyAg5ENfEiWL2qfDtCMa_Z",
+    };
+
+    console.log("Aschi");
+    const file = req.file;
+
+    const page = req.query.page;
+
+    const folderId = pages[page];
+
+    console.log(folderId, file, page);
+
+    // console.log(file);
+    if (!file) {
+      return res.status(400).send({ msg: "No file uploaded." });
+    }
+
+    authorize()
+      .then((authClient) => uploadFile(authClient, file, folderId))
+      .then((result) => {
+        console.log(result, "RESPONSE");
+        res.send({ msg: "Successfully uploaded", fileId: result });
+      })
+      .catch((err) => {
+        console.log(err);
+        res.send({ msg: "Something went wrong" });
+      });
   });
 
   // update user draft application  data
