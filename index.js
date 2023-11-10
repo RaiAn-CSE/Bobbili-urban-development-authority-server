@@ -7,7 +7,6 @@ const stream = require("stream");
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
 const storage = multer.memoryStorage(); // Store file in memory (can also use diskStorage)
 const upload = multer({ storage: storage });
 // app.use(uploadRouter);
@@ -1273,6 +1272,93 @@ async function run() {
     res.send(result);
   });
 
+  // get specific approved applications
+  app.get("/getSpecificApprovedApplication", async (req, res) => {
+    const appNo = JSON.parse(req.query.appNo);
+    const result = await approvedCollection.findOne({ applicationNo: appNo });
+    res.send(result);
+  });
+
+  // get specific shortfall applications
+  app.get("/getSpecificShortfallApplication", async (req, res) => {
+    const appNo = JSON.parse(req.query.appNo);
+    const result = await shortfallCollection.findOne({ applicationNo: appNo });
+    res.send(result);
+  });
+
+  // async function downloadFile(authClient, fileName, fileId) {
+  //   const drive = google.drive({ version: "v3", auth: authClient });
+
+  //   if (fileName && fileId) {
+  //     let dest = fs.createWriteStream(fileName);
+  //     drive.files.get(
+  //       { fileId: fileId, alt: "media" },
+  //       { responseType: "stream" },
+  //       (err, { data }) => {
+  //         if (err) {
+  //           console.log(err);
+  //           return;
+  //         }
+  //         data
+  //           .on("end", () => console.log("Done."))
+  //           .on("error", (err) => {
+  //             console.log(err);
+  //             return process.exit();
+  //           })
+  //           .pipe(dest);
+  //       }
+  //     );
+  //   } else console.log("Please specify file name/file id");
+  // }
+
+  async function downloadFile(authClient, fileName, fileId, res) {
+    const drive = google.drive({ version: "v3", auth: authClient });
+
+    if (fileName && fileId) {
+      const fileStream = await drive.files.get(
+        { fileId: fileId, alt: "media" },
+        { responseType: "stream" }
+      );
+
+      if (fileStream) {
+        res.setHeader(
+          "Content-disposition",
+          `attachment; filename=${fileName}`
+        );
+        res.setHeader("Content-type", "application/octet-stream");
+        fileStream.data
+          .on("end", () => {
+            console.log("Done.");
+            // Send a success message to the client
+
+            // res.status(200).json({ message: "File downloaded successfully" });
+          })
+          .on("error", (err) => {
+            console.log(err);
+
+            // res.status(500).json({ message: "Error downloading the file" });
+          })
+          .pipe(res);
+
+        // Set the response headers for the file download
+      } else {
+        console.log("Failed to retrieve file stream.");
+        // res.status(500).json({ message: "Failed to retrieve file stream" });
+      }
+    } else {
+      console.log("Please specify file name/file id");
+      // res.status(400).json({ message: "Please specify file name/file id" });
+    }
+  }
+
+  app.get("/downloadFile", async (req, res) => {
+    const { fileName, fileId } = JSON.parse(req.query.data);
+    console.log(fileName, fileId);
+    authorize().then((authClient) =>
+      downloadFile(authClient, fileName, fileId, res)
+    );
+  });
+
   // Store draft application in the database
   app.post("/addApplication", async (req, res) => {
     const data = req.body;
@@ -1846,14 +1932,12 @@ async function run() {
 
       let insertedData;
 
-      // if (isApproved) {
-      //   insertedData = await approvedCollection.insertOne(findApplication);
-      // } else {
-      //   insertedData = await shortfallCollection.insertOne(findApplication);
-      // }
-
       if (trackPSAction === "reject") {
         insertedData = await rejectedCollection.insertOne(findApplication);
+      } else if (trackPSAction === "approved") {
+        insertedData = await approvedCollection.insertOne(findApplication);
+      } else if (trackPSAction === "shortfall") {
+        insertedData = await shortfallCollection.insertOne(findApplication);
       }
 
       const deleteData = await submitApplicationCollection.deleteOne(filter);
