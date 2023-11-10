@@ -1279,6 +1279,13 @@ async function run() {
     res.send(result);
   });
 
+  // get specific shortfall applications
+  app.get("/getSpecificShortfallApplication", async (req, res) => {
+    const appNo = JSON.parse(req.query.appNo);
+    const result = await shortfallCollection.findOne({ applicationNo: appNo });
+    res.send(result);
+  });
+
   // async function downloadFile(authClient, fileName, fileId) {
   //   const drive = google.drive({ version: "v3", auth: authClient });
 
