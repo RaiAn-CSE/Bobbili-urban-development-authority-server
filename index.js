@@ -1886,7 +1886,7 @@ async function run() {
   });
 
   app.delete("/decisionOfPs", async (req, res) => {
-    const { applicationNo, trackPSAction } = JSON.parse(req.query.data);
+    const { applicationNo, trackPSAction, psId } = JSON.parse(req.query.data);
 
     console.log(req.query.data, "DECIsion");
 
@@ -1913,7 +1913,21 @@ async function run() {
 
     console.log(status, "Status");
 
-    const updateData = { ...findApplication, psSubmitDate, status };
+    let needToAdd;
+
+    if (trackPSAction === "shortfall") {
+      const allShortfallApplications = await shortfallCollection
+        .find({})
+        .toArray();
+
+      const shortfallSerialNo = allShortfallApplications?.length + 1;
+
+      needToAdd = { psSubmitDate, status, shortfallSerialNo, psId };
+    } else {
+      needToAdd = { psSubmitDate, status, psId };
+    }
+
+    const updateData = { ...findApplication, ...needToAdd };
 
     console.log(updateData, "updateDoc");
     const updateDoc = {
