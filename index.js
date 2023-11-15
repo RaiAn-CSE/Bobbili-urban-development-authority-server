@@ -330,7 +330,27 @@ async function run() {
     res.send(result);
   });
 
-  //get users draftapplication
+  // get all applications
+  app.get("/allApplications", async (req, res) => {
+    const draftApplications = await draftApplicationCollection
+      .find({})
+      .toArray();
+    const submitApplications = await submitApplicationCollection
+      .find({})
+      .toArray();
+    const approvedApplications = await approvedCollection.find({}).toArray();
+    const shortfallApplications = await shortfallCollection.find({}).toArray();
+
+    const result = [
+      ...draftApplications,
+      ...submitApplications,
+      ...approvedApplications,
+      ...shortfallApplications,
+    ];
+    res.send(result);
+  });
+
+  //get users draft application
   app.get("/draftApplications/:id", async (req, res) => {
     const id = req.params.id;
     console.log(id);
@@ -352,24 +372,23 @@ async function run() {
     console.log(appNo, userId);
 
     let result;
-    if (page === "submit") {
+    if (page === "submit" || page === "home") {
       result = await submitApplicationCollection.findOne({
         applicationNo: appNo,
       });
     }
-    if (role === "LTP" && page === "draft") {
+    if ((role === "LTP" && page === "draft") || page === "home") {
       result = await draftApplicationCollection.findOne({
-        userId,
         applicationNo: appNo,
       });
     }
 
-    if (page === "approved") {
+    if (page === "approved" || page === "home") {
       result = await approvedCollection.findOne({
         applicationNo: appNo,
       });
     }
-    if (page === "shortfall") {
+    if (page === "shortfall" || page === "home") {
       result = await shortfallCollection.findOne({
         applicationNo: appNo,
       });
@@ -1886,7 +1905,7 @@ async function run() {
   });
 
   app.delete("/decisionOfPs", async (req, res) => {
-    const { applicationNo, trackPSAction } = JSON.parse(req.query.data);
+    const { applicationNo, trackPSAction, psId } = JSON.parse(req.query.data);
 
     console.log(req.query.data, "DECIsion");
 
@@ -1913,7 +1932,21 @@ async function run() {
 
     console.log(status, "Status");
 
-    const updateData = { ...findApplication, psSubmitDate, status };
+    let needToAdd;
+
+    if (trackPSAction === "shortfall") {
+      const allShortfallApplications = await shortfallCollection
+        .find({})
+        .toArray();
+
+      const shortfallSerialNo = allShortfallApplications?.length + 1;
+
+      needToAdd = { psSubmitDate, status, shortfallSerialNo, psId };
+    } else {
+      needToAdd = { psSubmitDate, status, psId };
+    }
+
+    const updateData = { ...findApplication, ...needToAdd };
 
     console.log(updateData, "updateDoc");
     const updateDoc = {
