@@ -1812,6 +1812,47 @@ async function run() {
     }
   });
 
+  // store resubmit application
+  app.patch("/storeResubmitApplication", async (req, res) => {
+    const { oldImageFiles, appNo } = JSON.parse(req?.query?.data);
+
+    // delete previous image files from the google drive
+    oldImageFiles.length &&
+      oldImageFiles.forEach((fileId) => {
+        if (fileId.length) {
+          authorize().then((authClient) =>
+            deleteGoggleDriveFile(authClient, fileId)
+          );
+        }
+      });
+
+    const needToStoreData = req.body;
+
+    const updateDoc = {
+      $set: needToStoreData,
+    };
+
+    const result = await shortfallCollection.updateOne(
+      { applicationNo: appNo },
+      updateDoc
+    );
+
+    if (result?.acknowledged) {
+      const findApplication = await shortfallCollection.findOne({
+        applicationNo: appNo,
+      });
+      const submitApplication = await submitApplicationCollection.insertOne(
+        findApplication
+      );
+
+      const deleteFromShortfall = await shortfallCollection.deleteOne({
+        applicationNo: appNo,
+      });
+
+      res.send(result);
+    }
+  });
+
   // delete an individual user
   app.delete("/deleteUser/:id", async (req, res) => {
     const userId = req.params.id;
@@ -1939,9 +1980,21 @@ async function run() {
         .find({})
         .toArray();
 
-      const shortfallSerialNo = allShortfallApplications?.length + 1;
+      let maxShortfallNo = 0;
 
-      needToAdd = { psSubmitDate, status, shortfallSerialNo, psId };
+      if (allShortfallApplications?.length > 0) {
+        const allShortfallSerialNo = allShortfallApplications?.map(
+          (eachApp) => eachApp?.shortfallNo
+        );
+        maxShortfallNo = Math.max(...allShortfallSerialNo);
+      }
+
+      needToAdd = {
+        psSubmitDate,
+        status,
+        shortfallSerialNo: maxShortfallNo + 1,
+        psId,
+      };
     } else {
       needToAdd = { psSubmitDate, status, psId };
     }
