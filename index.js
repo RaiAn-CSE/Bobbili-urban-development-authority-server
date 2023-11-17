@@ -1841,6 +1841,15 @@ async function run() {
       const findApplication = await shortfallCollection.findOne({
         applicationNo: appNo,
       });
+
+      delete findApplication["_id"];
+      delete findApplication["psDocumentPageObservation"];
+      delete findApplication["psDrawingPageObservation"];
+      delete findApplication["siteInspection"];
+      delete findApplication["psId"];
+      delete findApplication["psSubmitDate"];
+      delete findApplication["shortfallSerialNo"];
+
       const submitApplication = await submitApplicationCollection.insertOne(
         findApplication
       );
