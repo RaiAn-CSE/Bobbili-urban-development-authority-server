@@ -1348,7 +1348,7 @@ async function run() {
       return {
         psId: eachPs?.id,
         psName: eachPs?.name,
-        psContact: eachPs?.phone,
+        psContact: eachPs?.contact,
         assigned: applicationNotVerified + applicationVerified,
         verified: applicationVerified,
         pending: applicationNotVerified,
