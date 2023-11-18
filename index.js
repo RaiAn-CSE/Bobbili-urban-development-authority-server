@@ -12,6 +12,7 @@ const upload = multer({ storage: storage });
 // app.use(uploadRouter);
 
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
 
 const { google } = require("googleapis");
 const path = require("path");
@@ -288,6 +289,38 @@ async function run() {
     .db("Construction-Application")
     .collection("districts");
 
+  function generateToken(data) {
+    return jwt.sign(data, process.env.PRIVATE_TOKEN, { expiresIn: "3h" });
+  }
+
+  function verifyToken(req, res, next) {
+    const bearerHeader = req.cookies["myTokenCookie"];
+    if (bearerHeader) {
+      const bearer = bearerHeader.split(" ");
+      const token = bearer[1];
+      req.token = token;
+      next();
+    } else {
+      res.status(401).send({ message: '"Unauthorized Access"' });
+    }
+  }
+
+  app.post("/jwt", async (req, res) => {
+    const data = req.body;
+    console.log(data, "JWT");
+    const token = generateToken(data);
+    const bearerToken = `bearer ${token}`;
+    console.log(bearerToken, "Bearer token");
+    res.cookie("myTokenCookie", bearerToken, {
+      expires: new Date(Date.now() + 10800000),
+      httpOnly: true,
+      sameSite: "None", // Set based on your requirements
+      secure: true, // Set to true if using HTTPS
+    });
+    // console.log(res.cookie(), "response cookie");
+    res.status(200).json({ success: true });
+  });
+
   app.get("/documents", async (req, res) => {
     const result = await documentPageCollection.find({}).toArray();
     res.send(result);
@@ -303,9 +336,12 @@ async function run() {
 
     if (result) {
       const { _id, role, userId, password, name } = result;
+
+      const userInfo = { _id, role, userId, password, name };
+
       res.send({
         status: 1,
-        userInfo: { _id, role, userId, password, name },
+        userInfo,
       });
     } else {
       res.send({
@@ -325,6 +361,15 @@ async function run() {
 
   // get all users
   app.get("/allUser", async (req, res) => {
+    // jwt.verify(req.token, process.env.PRIVATE_TOKEN, async function (err) {
+    //   if (err) {
+    //     res.status(400).send("Unauthorized access");
+    //   }
+    //   const cursor = userCollection.find({});
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
+
     const cursor = userCollection.find({});
     const result = await cursor.toArray();
     res.send(result);
