@@ -1305,6 +1305,62 @@ async function run() {
     res.send(result);
   });
 
+  // get verification status
+  app.get("/getVerificationStatus", async (req, res) => {
+    const allPS = await userCollection.find({ role: "PS" }).toArray();
+
+    const allPsInfo = allPS.map((item) => {
+      return {
+        id: item?._id,
+        district: item?.district,
+        mandal: item?.mandal,
+        gramaPanchayat: item?.gramaPanchayat,
+        name: item?.name,
+        contact: item?.phone,
+      };
+    });
+
+    const verificationStatus = allPsInfo.map(async (eachPs) => {
+      const queryForAppCame = {
+        "buildingInfo.generalInformation.district": eachPs?.district,
+        "buildingInfo.generalInformation.mandal": eachPs?.mandal,
+        "buildingInfo.generalInformation.gramaPanchayat":
+          eachPs?.gramaPanchayat,
+      };
+
+      const applicationNotVerified = await submitApplicationCollection
+        .find(queryForAppCame)
+        .toArray()?.length;
+
+      const approved = await approvedCollection
+        .find({ psId: eachPs?.id })
+        .toArray();
+      const shortfall = await shortfallCollection
+        .find({ psId: eachPs?.id })
+        .toArray();
+      const rejected = await rejectedCollection
+        .find({ psId: eachPs?.id })
+        .toArray();
+
+      const applicationVerified =
+        approved?.length + shortfall?.length + rejected?.length;
+
+      return {
+        psId: eachPs?.id,
+        psName: eachPs?.name,
+        psContact: eachPs?.phone,
+        assigned: applicationNotVerified + applicationVerified,
+        verified: applicationVerified,
+        pending: applicationNotVerified,
+      };
+    });
+
+    Promise.all(verificationStatus).then((result) => {
+      console.log(result);
+      res.send(result);
+    });
+  });
+
   // async function downloadFile(authClient, fileName, fileId) {
   //   const drive = google.drive({ version: "v3", auth: authClient });
 
