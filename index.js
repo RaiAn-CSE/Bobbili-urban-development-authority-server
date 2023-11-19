@@ -294,14 +294,17 @@ async function run() {
   }
 
   function verifyToken(req, res, next) {
-    const bearerHeader = req.cookies["myTokenCookie"];
-    if (bearerHeader) {
+    const bearerHeader = req?.headers?.authorization;
+    console.log(bearerHeader, typeof bearerHeader, "bearer header");
+    if (bearerHeader === "null" || typeof bearerHeader === "undefined") {
+      console.log("BACHA HERE");
+      res.status(401).send({ message: "Unauthorized Access" });
+    } else {
+      console.log("HERE");
       const bearer = bearerHeader.split(" ");
       const token = bearer[1];
       req.token = token;
       next();
-    } else {
-      res.status(401).send({ message: '"Unauthorized Access"' });
     }
   }
 
@@ -311,14 +314,9 @@ async function run() {
     const token = generateToken(data);
     const bearerToken = `bearer ${token}`;
     console.log(bearerToken, "Bearer token");
-    res.cookie("myTokenCookie", bearerToken, {
-      expires: new Date(Date.now() + 10800000),
-      httpOnly: true,
-      sameSite: "None", // Set based on your requirements
-      secure: true, // Set to true if using HTTPS
-    });
+
     // console.log(res.cookie(), "response cookie");
-    res.status(200).json({ success: true });
+    res.status(200).json({ success: true, token: bearerToken });
   });
 
   app.get("/documents", async (req, res) => {
@@ -363,11 +361,13 @@ async function run() {
   app.get("/allUser", async (req, res) => {
     // jwt.verify(req.token, process.env.PRIVATE_TOKEN, async function (err) {
     //   if (err) {
-    //     res.status(400).send("Unauthorized access");
+    //     console.log("object");
+    //     res.status(400).send({ message: "Unauthorized access" });
+    //   } else {
+    //     const cursor = userCollection.find({});
+    //     const result = await cursor.toArray();
+    //     res.send(result);
     //   }
-    //   const cursor = userCollection.find({});
-    //   const result = await cursor.toArray();
-    //   res.send(result);
     // });
 
     const cursor = userCollection.find({});
@@ -1351,58 +1351,65 @@ async function run() {
   });
 
   // get verification status
-  app.get("/getVerificationStatus", async (req, res) => {
-    const allPS = await userCollection.find({ role: "PS" }).toArray();
+  app.get("/getVerificationStatus", verifyToken, async (req, res) => {
+    jwt.verify(req.token, process.env.PRIVATE_TOKEN, async function (err) {
+      if (err) {
+        console.log("object");
+        res.status(400).send({ message: "Unauthorized access" });
+      } else {
+        const allPS = await userCollection.find({ role: "PS" }).toArray();
 
-    const allPsInfo = allPS.map((item) => {
-      return {
-        id: item?._id,
-        district: item?.district,
-        mandal: item?.mandal,
-        gramaPanchayat: item?.gramaPanchayat,
-        name: item?.name,
-        contact: item?.phone,
-      };
-    });
+        const allPsInfo = allPS.map((item) => {
+          return {
+            id: item?._id,
+            district: item?.district,
+            mandal: item?.mandal,
+            gramaPanchayat: item?.gramaPanchayat,
+            name: item?.name,
+            contact: item?.phone,
+          };
+        });
 
-    const verificationStatus = allPsInfo.map(async (eachPs) => {
-      const queryForAppCame = {
-        "buildingInfo.generalInformation.district": eachPs?.district,
-        "buildingInfo.generalInformation.mandal": eachPs?.mandal,
-        "buildingInfo.generalInformation.gramaPanchayat":
-          eachPs?.gramaPanchayat,
-      };
+        const verificationStatus = allPsInfo.map(async (eachPs) => {
+          const queryForAppCame = {
+            "buildingInfo.generalInformation.district": eachPs?.district,
+            "buildingInfo.generalInformation.mandal": eachPs?.mandal,
+            "buildingInfo.generalInformation.gramaPanchayat":
+              eachPs?.gramaPanchayat,
+          };
 
-      const applicationNotVerified = await submitApplicationCollection
-        .find(queryForAppCame)
-        .toArray()?.length;
+          const applicationNotVerified = await submitApplicationCollection
+            .find(queryForAppCame)
+            .toArray()?.length;
 
-      const approved = await approvedCollection
-        .find({ psId: eachPs?.id })
-        .toArray();
-      const shortfall = await shortfallCollection
-        .find({ psId: eachPs?.id })
-        .toArray();
-      const rejected = await rejectedCollection
-        .find({ psId: eachPs?.id })
-        .toArray();
+          const approved = await approvedCollection
+            .find({ psId: eachPs?.id })
+            .toArray();
+          const shortfall = await shortfallCollection
+            .find({ psId: eachPs?.id })
+            .toArray();
+          const rejected = await rejectedCollection
+            .find({ psId: eachPs?.id })
+            .toArray();
 
-      const applicationVerified =
-        approved?.length + shortfall?.length + rejected?.length;
+          const applicationVerified =
+            approved?.length + shortfall?.length + rejected?.length;
 
-      return {
-        psId: eachPs?.id,
-        psName: eachPs?.name,
-        psContact: eachPs?.contact,
-        assigned: applicationNotVerified + applicationVerified,
-        verified: applicationVerified,
-        pending: applicationNotVerified,
-      };
-    });
+          return {
+            psId: eachPs?.id,
+            psName: eachPs?.name,
+            psContact: eachPs?.contact,
+            assigned: applicationNotVerified + applicationVerified,
+            verified: applicationVerified,
+            pending: applicationNotVerified,
+          };
+        });
 
-    Promise.all(verificationStatus).then((result) => {
-      console.log(result);
-      res.send(result);
+        Promise.all(verificationStatus).then((result) => {
+          console.log(result);
+          res.send(result);
+        });
+      }
     });
   });
 
