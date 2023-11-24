@@ -295,7 +295,9 @@ async function run() {
 
   function verifyToken(req, res, next) {
     const bearerHeader = req?.headers?.authorization;
+
     console.log(bearerHeader, typeof bearerHeader, "bearer header");
+
     if (bearerHeader === "null" || typeof bearerHeader === "undefined") {
       console.log("BACHA HERE");
       res.status(401).send({ message: "Unauthorized Access" });
@@ -358,7 +360,7 @@ async function run() {
   });
 
   // get all users
-  app.get("/allUser", async (req, res) => {
+  app.get("/allUser", verifyToken, async (req, res) => {
     // jwt.verify(req.token, process.env.PRIVATE_TOKEN, async function (err) {
     //   if (err) {
     //     console.log("object");
