@@ -360,7 +360,7 @@ async function run() {
   });
 
   // get all users
-  app.get("/allUser", verifyToken, async (req, res) => {
+  app.get("/allUser", async (req, res) => {
     // jwt.verify(req.token, process.env.PRIVATE_TOKEN, async function (err) {
     //   if (err) {
     //     console.log("object");
