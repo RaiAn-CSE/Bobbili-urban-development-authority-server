@@ -10,6 +10,15 @@ app.use(express.urlencoded({ extended: false }));
 const storage = multer.memoryStorage(); // Store file in memory (can also use diskStorage)
 const upload = multer({ storage: storage });
 // app.use(uploadRouter);
+const http = require("http");
+const { Server } = require("socket.io");
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
@@ -242,7 +251,7 @@ app.get("/", (req, res) => {
   res.send("Server is running");
 });
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log("Server is running on port ", port);
 });
 
@@ -288,6 +297,69 @@ async function run() {
   const districtCollection = client
     .db("Construction-Application")
     .collection("districts");
+
+  const messageCollection = client
+    .db("Construction-Application")
+    .collection("messageRequest");
+
+  app.post("/messageRequest", async (req, res) => {
+    const data = req.body;
+    console.log(data);
+    const insertData = {
+      ...data,
+      isAccepted: 0,
+      acceptedBy: "",
+    };
+    const result = await messageCollection.insertOne(insertData);
+    res.send(result);
+  });
+
+  app.patch("/messageRequest", async (req, res) => {
+    console.log(req.query.update);
+    const { id, action, senderId } = JSON.parse(req.query.update);
+    const query = { _id: new ObjectId(id) };
+
+    const findUser = await messageCollection.findOne(query);
+    let data;
+
+    if (action === "sendId") {
+      data = { ...findUser, senderId };
+    }
+    if (action === "timeUp") {
+      data = { ...findUser, noResponse: 1 };
+      console.log(data, "TIMEUP");
+    }
+
+    if (action === "requestAgain") {
+      data = { ...findUser, isAccepted: 0, acceptedBy: "" };
+    }
+
+    const updatedDoc = {
+      $set: {
+        ...data,
+      },
+    };
+
+    const result = await messageCollection.updateOne(query, updatedDoc);
+    res.send(result);
+  });
+
+  io.on("connection", (socket) => {
+    console.log("Client connected", socket.id);
+
+    // Emit a message to the client when new data is added
+    const changeStream = messageCollection.watch();
+    changeStream.on("change", (change) => {
+      console.log(change, "Change full document");
+      if (change?.operationType === "update") {
+        socket.emit("check-accept-message", { change, senderId: socket.id });
+      }
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Client disconnected", socket.id);
+    });
+  });
 
   function generateToken(data) {
     return jwt.sign(data, process.env.PRIVATE_TOKEN, { expiresIn: "3h" });
