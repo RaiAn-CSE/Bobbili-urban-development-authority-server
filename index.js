@@ -331,16 +331,23 @@ async function run() {
     }
 
     if (action === "requestAgain") {
-      data = { ...findUser, isAccepted: 0, acceptedBy: "" };
+      console.log(findUser, "FIND USER");
+      data = {
+        ...findUser,
+        isAccepted: 0,
+        acceptedBy: "",
+        noResponse: "",
+        senderId: "",
+      };
     }
 
+    console.log(data, "AFTER UPDATED");
     const updatedDoc = {
-      $set: {
-        ...data,
-      },
+      $set: { ...data },
     };
 
     const result = await messageCollection.updateOne(query, updatedDoc);
+    console.log(result);
     res.send(result);
   });
 
