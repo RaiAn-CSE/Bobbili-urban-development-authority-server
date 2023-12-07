@@ -305,13 +305,21 @@ async function run() {
   app.post("/messageRequest", async (req, res) => {
     const data = req.body;
     console.log(data);
-    const insertData = {
-      ...data,
-      isAccepted: 0,
-      acceptedBy: "",
-    };
-    const result = await messageCollection.insertOne(insertData);
-    res.send(result);
+
+    const query = { userId: data.userId };
+    const searchExistResult = await messageCollection.deleteOne(query);
+
+    console.log(searchExistResult, "Search result");
+
+    if (searchExistResult.acknowledged) {
+      const insertData = {
+        ...data,
+        isAccepted: 0,
+        acceptedBy: "",
+      };
+      const result = await messageCollection.insertOne(insertData);
+      res.send(result);
+    }
   });
 
   app.patch("/messageRequest", async (req, res) => {
@@ -351,15 +359,38 @@ async function run() {
     res.send(result);
   });
 
+  app.get("/missedMessage", async (req, res) => {
+    const result = await messageCollection.find({ noResponse: 1 }).toArray();
+
+    res.send(result);
+  });
+
+  app.delete("/missedMessage", async (req, res) => {
+    const id = req.query.id;
+
+    const query = { _id: new ObjectId(id) };
+
+    const result = await messageCollection.deleteOne(query);
+
+    res.send(result);
+  });
+
   io.on("connection", (socket) => {
     console.log("Client connected", socket.id);
 
     // Emit a message to the client when new data is added
-    const changeStream = messageCollection.watch();
-    changeStream.on("change", (change) => {
+    const checkUpdateMessage = messageCollection.watch();
+    checkUpdateMessage.on("change", async (change) => {
       console.log(change, "Change full document");
       if (change?.operationType === "update") {
-        socket.emit("check-accept-message", { change, senderId: socket.id });
+        const changeFullDocument = await messageCollection.findOne({
+          _id: new ObjectId(change.documentKey._id),
+        });
+        socket.emit("check-accept-message", {
+          change,
+          changedDocument: changeFullDocument,
+          senderId: socket.id,
+        });
       }
     });
 
