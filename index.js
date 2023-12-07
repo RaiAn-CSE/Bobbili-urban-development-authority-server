@@ -316,10 +316,17 @@ async function run() {
         ...data,
         isAccepted: 0,
         acceptedBy: "",
+        noResponse: 0,
       };
       const result = await messageCollection.insertOne(insertData);
       res.send(result);
     }
+  });
+
+  app.get("/messageRequest", async (req, res) => {
+    const result = await messageCollection.find({ noResponse: 0 }).toArray();
+
+    res.send(result);
   });
 
   app.patch("/messageRequest", async (req, res) => {
@@ -375,27 +382,54 @@ async function run() {
     res.send(result);
   });
 
+  const users = [
+    { id: "admin1", socketId: "", connected: false },
+    { id: "admin2", socketId: "", connected: false },
+  ];
+
   io.on("connection", (socket) => {
     console.log("Client connected", socket.id);
+
+    socket.on("login", (data) => {
+      console.log(data, "DATA");
+      const findIndex = users.findIndex((user) => user.id === data.id);
+      console.log(findIndex, "FIND INDEX");
+      if (findIndex !== -1) {
+        const userData = users[findIndex];
+        userData.socketId = socket.id;
+        userData.connected = true;
+      } else {
+        users.push({ id: data.id, socketId: socket.id, connected: true });
+      }
+
+      console.log(users, "users");
+    });
 
     // Emit a message to the client when new data is added
     const checkUpdateMessage = messageCollection.watch();
     checkUpdateMessage.on("change", async (change) => {
       console.log(change, "Change full document");
       if (change?.operationType === "update") {
-        const changeFullDocument = await messageCollection.findOne({
-          _id: new ObjectId(change.documentKey._id),
-        });
         socket.emit("check-accept-message", {
           change,
-          changedDocument: changeFullDocument,
           senderId: socket.id,
         });
+      }
+
+      if (change?.operationType === "insert") {
+        socket.emit("check-new-message", { change });
       }
     });
 
     socket.on("disconnect", () => {
       console.log("Client disconnected", socket.id);
+      const findIndex = users.findIndex((user) => user.socketId === socket.id);
+
+      if (findIndex !== -1) {
+        users.splice(findIndex, 1);
+      }
+
+      console.log(users);
     });
   });
 
