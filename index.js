@@ -324,21 +324,22 @@ async function run() {
   });
 
   app.get("/messageRequest", async (req, res) => {
-    const result = await messageCollection.find({ noResponse: 0 }).toArray();
-
+    const result = await messageCollection
+      .find({ noResponse: 0, isAccepted: 0 })
+      .toArray();
     res.send(result);
   });
 
   app.patch("/messageRequest", async (req, res) => {
     console.log(req.query.update);
-    const { id, action, senderId } = JSON.parse(req.query.update);
+    const { id, action, acceptedBy } = JSON.parse(req.query.update);
     const query = { _id: new ObjectId(id) };
 
     const findUser = await messageCollection.findOne(query);
     let data;
 
-    if (action === "sendId") {
-      data = { ...findUser, senderId };
+    if (action === "accept") {
+      data = { ...findUser, acceptedBy, isAccepted: 1 };
     }
     if (action === "timeUp") {
       data = { ...findUser, noResponse: 1 };
@@ -351,7 +352,7 @@ async function run() {
         ...findUser,
         isAccepted: 0,
         acceptedBy: "",
-        noResponse: "",
+        noResponse: 0,
         senderId: "",
       };
     }
@@ -412,7 +413,6 @@ async function run() {
       if (change?.operationType === "update") {
         socket.emit("check-accept-message", {
           change,
-          senderId: socket.id,
         });
       }
 
