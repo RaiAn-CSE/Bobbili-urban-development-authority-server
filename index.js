@@ -315,6 +315,7 @@ async function run() {
       const insertData = {
         ...data,
         text: [],
+        chatEnd: 0,
         isAccepted: 0,
         acceptedBy: "",
         noResponse: 0,
@@ -358,6 +359,10 @@ async function run() {
       };
     }
 
+    if (action === "chatEnd") {
+      data = { ...findUser, chatEnd: 1 };
+    }
+
     console.log(data, "AFTER UPDATED");
     const updatedDoc = {
       $set: { ...data },
@@ -374,7 +379,7 @@ async function run() {
     res.send(result);
   });
 
-  app.delete("/missedMessage", async (req, res) => {
+  app.delete("/messageRequest", async (req, res) => {
     const id = req.query.id;
 
     const query = { _id: new ObjectId(id) };
