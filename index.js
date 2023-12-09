@@ -314,9 +314,11 @@ async function run() {
     if (searchExistResult.acknowledged) {
       const insertData = {
         ...data,
+        text: [],
         isAccepted: 0,
         acceptedBy: "",
         noResponse: 0,
+        leave: false,
       };
       const result = await messageCollection.insertOne(insertData);
       res.send(result);
@@ -353,7 +355,6 @@ async function run() {
         isAccepted: 0,
         acceptedBy: "",
         noResponse: 0,
-        senderId: "",
       };
     }
 
@@ -380,6 +381,15 @@ async function run() {
 
     const result = await messageCollection.deleteOne(query);
 
+    res.send(result);
+  });
+
+  app.get("/acceptMessage", async (req, res) => {
+    const acceptedBy = JSON.parse(req.query.role);
+    console.log(acceptedBy, "Accepted by");
+    const result = await messageCollection
+      .find({ isAccepted: 1, acceptedBy })
+      .toArray();
     res.send(result);
   });
 
@@ -425,8 +435,10 @@ async function run() {
       console.log("Client disconnected", socket.id);
       const findIndex = users.findIndex((user) => user.socketId === socket.id);
 
+      console.log("Find index", findIndex);
       if (findIndex !== -1) {
-        users.splice(findIndex, 1);
+        // users.splice(findIndex, 1);
+        console.log(users[findIndex], "Disconnected");
       }
 
       console.log(users);
