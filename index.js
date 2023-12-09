@@ -430,6 +430,11 @@ async function run() {
           change,
         });
       }
+      if (change?.operationType === "delete") {
+        socket.emit("check-accept-message", {
+          change,
+        });
+      }
 
       if (change?.operationType === "insert") {
         socket.emit("check-new-message", { change });
