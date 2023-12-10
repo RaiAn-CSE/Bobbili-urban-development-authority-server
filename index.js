@@ -441,6 +441,15 @@ async function run() {
       }
     });
 
+    socket.on("check-connection", (data) => {
+      const findIndex = users.findIndex((user) => user?.id === data?.id);
+      if (findIndex !== -1 && users[findIndex]?.connected) {
+        socket.emit("connection-status", true);
+      } else {
+        socket.emit("connection-status", false);
+      }
+    });
+
     socket.on("disconnect", () => {
       console.log("Client disconnected", socket.id);
       const findIndex = users.findIndex((user) => user.socketId === socket.id);
@@ -449,6 +458,7 @@ async function run() {
       if (findIndex !== -1) {
         // users.splice(findIndex, 1);
         console.log(users[findIndex], "Disconnected");
+        users[findIndex].connected = false;
       }
 
       console.log(users);
