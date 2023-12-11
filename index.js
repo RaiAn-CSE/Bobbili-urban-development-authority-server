@@ -10,8 +10,18 @@ app.use(express.urlencoded({ extended: false }));
 const storage = multer.memoryStorage(); // Store file in memory (can also use diskStorage)
 const upload = multer({ storage: storage });
 // app.use(uploadRouter);
+const http = require("http");
+const { Server } = require("socket.io");
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
 
 const { google } = require("googleapis");
 const path = require("path");
@@ -241,7 +251,7 @@ app.get("/", (req, res) => {
   res.send("Server is running");
 });
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log("Server is running on port ", port);
 });
 
@@ -288,6 +298,237 @@ async function run() {
     .db("Construction-Application")
     .collection("districts");
 
+  const messageCollection = client
+    .db("Construction-Application")
+    .collection("messageRequest");
+
+  app.post("/messageRequest", async (req, res) => {
+    const data = req.body;
+    console.log(data);
+
+    const query = { userId: data.userId };
+    const searchExistResult = await messageCollection.deleteOne(query);
+
+    console.log(searchExistResult, "Search result");
+
+    if (searchExistResult.acknowledged) {
+      const insertData = {
+        ...data,
+        text: [],
+        chatEnd: 0,
+        isAccepted: 0,
+        acceptedBy: "",
+        noResponse: 0,
+        leave: false,
+      };
+      const result = await messageCollection.insertOne(insertData);
+      res.send(result);
+    }
+  });
+
+  app.get("/messageRequest", async (req, res) => {
+    const result = await messageCollection
+      .find({ noResponse: 0, isAccepted: 0 })
+      .toArray();
+    res.send(result);
+  });
+
+  app.patch("/messageRequest", async (req, res) => {
+    console.log(req.query.update);
+    const { id, action, acceptedBy, message } = JSON.parse(req.query.update);
+    const query = { _id: new ObjectId(id) };
+
+    const findUser = await messageCollection.findOne(query);
+    let data;
+
+    if (action === "accept") {
+      data = { ...findUser, acceptedBy, isAccepted: 1 };
+    }
+    if (action === "timeUp") {
+      data = { ...findUser, noResponse: 1 };
+      console.log(data, "TIMEUP");
+    }
+
+    if (action === "requestAgain") {
+      console.log(findUser, "FIND USER");
+      data = {
+        ...findUser,
+        isAccepted: 0,
+        acceptedBy: "",
+        noResponse: 0,
+        text: [],
+      };
+    }
+
+    if (action === "chatEnd") {
+      data = { ...findUser, chatEnd: 1 };
+    }
+    if (action === "text") {
+      findUser["text"].push(message);
+      data = { ...findUser };
+    }
+
+    console.log(data, "AFTER UPDATED");
+    const updatedDoc = {
+      $set: { ...data },
+    };
+
+    const result = await messageCollection.updateOne(query, updatedDoc);
+    console.log(result);
+    res.send(result);
+  });
+
+  app.get("/missedMessage", async (req, res) => {
+    const result = await messageCollection.find({ noResponse: 1 }).toArray();
+
+    res.send(result);
+  });
+
+  app.delete("/messageRequest", async (req, res) => {
+    const id = req.query.id;
+
+    const query = { _id: new ObjectId(id) };
+
+    const result = await messageCollection.deleteOne(query);
+
+    res.send(result);
+  });
+
+  app.get("/acceptMessage", async (req, res) => {
+    const acceptedBy = JSON.parse(req.query.role);
+    console.log(acceptedBy, "Accepted by");
+    const result = await messageCollection
+      .find({ isAccepted: 1, acceptedBy })
+      .toArray();
+    res.send(result);
+  });
+
+  app.get("/messages", async (req, res) => {
+    const id = req.query.id;
+
+    const result = await messageCollection.findOne({ _id: new ObjectId(id) });
+    res.send(result);
+  });
+
+  const users = [
+    { id: "admin1", socketId: "", connected: false },
+    { id: "admin2", socketId: "", connected: false },
+  ];
+
+  io.on("connection", (socket) => {
+    console.log("Client connected", socket.id);
+
+    socket.on("login", (data) => {
+      console.log(data, "DATA");
+      const findIndex = users.findIndex((user) => user.id === data.id);
+      console.log(findIndex, "FIND INDEX");
+      if (findIndex !== -1) {
+        const userData = users[findIndex];
+        userData.socketId = socket.id;
+        userData.connected = true;
+      } else {
+        users.push({ id: data.id, socketId: socket.id, connected: true });
+      }
+
+      console.log(users, "users");
+    });
+
+    // Emit a message to the client when new data is added
+    const checkUpdateMessage = messageCollection.watch();
+    checkUpdateMessage.on("change", async (change) => {
+      console.log(change, "Change full document");
+      if (change?.operationType === "update") {
+        socket.emit("check-accept-message", {
+          change,
+        });
+      }
+      if (change?.operationType === "delete") {
+        socket.emit("check-accept-message", {
+          change,
+        });
+      }
+
+      if (change?.operationType === "insert") {
+        socket.emit("check-new-message", { change });
+      }
+    });
+
+    socket.on("check-connection", (data) => {
+      const findIndex = users.findIndex((user) => user?.id === data?.id);
+      if (findIndex !== -1 && users[findIndex]?.connected) {
+        socket.emit("connection-status", true);
+      } else {
+        socket.emit("connection-status", false);
+      }
+    });
+
+    socket.on("private-message", ({ to, message }) => {
+      const findIndex = users.findIndex((user) => user.id === to);
+      console.log("FIND INDEX PM", findIndex, to, users);
+      if (findIndex !== -1) {
+        console.log(message, "message");
+        const toSocketId = users[findIndex].socketId;
+        io.to(toSocketId).emit("private-message", message);
+      }
+
+      // {
+      //   console.log(`User ${to} is not online.`);
+      //   // Handle the case where the recipient is not online or doesn't exist
+      //   // You may want to emit an event back to the sender indicating the issue
+      //   socket.emit("private-message-error", {
+      //     to,
+      //     message: "User not online",
+      //   });
+      // }
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Client disconnected", socket.id);
+      const findIndex = users.findIndex((user) => user.socketId === socket.id);
+
+      console.log("Find index", findIndex);
+      if (findIndex !== -1) {
+        // users.splice(findIndex, 1);
+        console.log(users[findIndex], "Disconnected");
+        users[findIndex].connected = false;
+      }
+
+      console.log(users);
+    });
+  });
+
+  function generateToken(data) {
+    return jwt.sign(data, process.env.PRIVATE_TOKEN, { expiresIn: "3h" });
+  }
+
+  function verifyToken(req, res, next) {
+    const bearerHeader = req?.headers?.authorization;
+
+    console.log(bearerHeader, typeof bearerHeader, "bearer header");
+
+    if (bearerHeader === "null" || typeof bearerHeader === "undefined") {
+      console.log("BACHA HERE");
+      res.status(401).send({ message: "Unauthorized Access" });
+    } else {
+      console.log("HERE");
+      const bearer = bearerHeader.split(" ");
+      const token = bearer[1];
+      req.token = token;
+      next();
+    }
+  }
+
+  app.post("/jwt", async (req, res) => {
+    const data = req.body;
+    console.log(data, "JWT");
+    const token = generateToken(data);
+    const bearerToken = `bearer ${token}`;
+    console.log(bearerToken, "Bearer token");
+
+    // console.log(res.cookie(), "response cookie");
+    res.status(200).json({ success: true, token: bearerToken });
+  });
+
   app.get("/documents", async (req, res) => {
     const result = await documentPageCollection.find({}).toArray();
     res.send(result);
@@ -303,9 +544,12 @@ async function run() {
 
     if (result) {
       const { _id, role, userId, password, name } = result;
+
+      const userInfo = { _id, role, userId, password, name };
+
       res.send({
         status: 1,
-        userInfo: { _id, role, userId, password, name },
+        userInfo,
       });
     } else {
       res.send({
@@ -325,6 +569,17 @@ async function run() {
 
   // get all users
   app.get("/allUser", async (req, res) => {
+    // jwt.verify(req.token, process.env.PRIVATE_TOKEN, async function (err) {
+    //   if (err) {
+    //     console.log("object");
+    //     res.status(400).send({ message: "Unauthorized access" });
+    //   } else {
+    //     const cursor = userCollection.find({});
+    //     const result = await cursor.toArray();
+    //     res.send(result);
+    //   }
+    // });
+
     const cursor = userCollection.find({});
     const result = await cursor.toArray();
     res.send(result);
@@ -1305,6 +1560,69 @@ async function run() {
     res.send(result);
   });
 
+  // get verification status
+  app.get("/getVerificationStatus", verifyToken, async (req, res) => {
+    jwt.verify(req.token, process.env.PRIVATE_TOKEN, async function (err) {
+      if (err) {
+        console.log("object");
+        res.status(400).send({ message: "Unauthorized access" });
+      } else {
+        const allPS = await userCollection.find({ role: "PS" }).toArray();
+
+        const allPsInfo = allPS.map((item) => {
+          return {
+            id: item?._id,
+            district: item?.district,
+            mandal: item?.mandal,
+            gramaPanchayat: item?.gramaPanchayat,
+            name: item?.name,
+            contact: item?.phone,
+          };
+        });
+
+        const verificationStatus = allPsInfo.map(async (eachPs) => {
+          const queryForAppCame = {
+            "buildingInfo.generalInformation.district": eachPs?.district,
+            "buildingInfo.generalInformation.mandal": eachPs?.mandal,
+            "buildingInfo.generalInformation.gramaPanchayat":
+              eachPs?.gramaPanchayat,
+          };
+
+          const applicationNotVerified = await submitApplicationCollection
+            .find(queryForAppCame)
+            .toArray()?.length;
+
+          const approved = await approvedCollection
+            .find({ psId: eachPs?.id })
+            .toArray();
+          const shortfall = await shortfallCollection
+            .find({ psId: eachPs?.id })
+            .toArray();
+          const rejected = await rejectedCollection
+            .find({ psId: eachPs?.id })
+            .toArray();
+
+          const applicationVerified =
+            approved?.length + shortfall?.length + rejected?.length;
+
+          return {
+            psId: eachPs?.id,
+            psName: eachPs?.name,
+            psContact: eachPs?.contact,
+            assigned: applicationNotVerified + applicationVerified,
+            verified: applicationVerified,
+            pending: applicationNotVerified,
+          };
+        });
+
+        Promise.all(verificationStatus).then((result) => {
+          console.log(result);
+          res.send(result);
+        });
+      }
+    });
+  });
+
   // async function downloadFile(authClient, fileName, fileId) {
   //   const drive = google.drive({ version: "v3", auth: authClient });
 
@@ -1812,6 +2130,56 @@ async function run() {
     }
   });
 
+  // store resubmit application
+  app.patch("/storeResubmitApplication", async (req, res) => {
+    const { oldImageFiles, appNo } = JSON.parse(req?.query?.data);
+
+    // delete previous image files from the google drive
+    oldImageFiles.length &&
+      oldImageFiles.forEach((fileId) => {
+        if (fileId.length) {
+          authorize().then((authClient) =>
+            deleteGoggleDriveFile(authClient, fileId)
+          );
+        }
+      });
+
+    const needToStoreData = req.body;
+
+    const updateDoc = {
+      $set: needToStoreData,
+    };
+
+    const result = await shortfallCollection.updateOne(
+      { applicationNo: appNo },
+      updateDoc
+    );
+
+    if (result?.acknowledged) {
+      const findApplication = await shortfallCollection.findOne({
+        applicationNo: appNo,
+      });
+
+      delete findApplication["_id"];
+      delete findApplication["psDocumentPageObservation"];
+      delete findApplication["psDrawingPageObservation"];
+      delete findApplication["siteInspection"];
+      delete findApplication["psId"];
+      delete findApplication["psSubmitDate"];
+      delete findApplication["shortfallSerialNo"];
+
+      const submitApplication = await submitApplicationCollection.insertOne(
+        findApplication
+      );
+
+      const deleteFromShortfall = await shortfallCollection.deleteOne({
+        applicationNo: appNo,
+      });
+
+      res.send(result);
+    }
+  });
+
   // delete an individual user
   app.delete("/deleteUser/:id", async (req, res) => {
     const userId = req.params.id;
@@ -1939,9 +2307,21 @@ async function run() {
         .find({})
         .toArray();
 
-      const shortfallSerialNo = allShortfallApplications?.length + 1;
+      let maxShortfallNo = 0;
 
-      needToAdd = { psSubmitDate, status, shortfallSerialNo, psId };
+      if (allShortfallApplications?.length > 0) {
+        const allShortfallSerialNo = allShortfallApplications?.map(
+          (eachApp) => eachApp?.shortfallNo
+        );
+        maxShortfallNo = Math.max(...allShortfallSerialNo);
+      }
+
+      needToAdd = {
+        psSubmitDate,
+        status,
+        shortfallSerialNo: maxShortfallNo + 1,
+        psId,
+      };
     } else {
       needToAdd = { psSubmitDate, status, psId };
     }
