@@ -335,7 +335,7 @@ async function run() {
 
   app.patch("/messageRequest", async (req, res) => {
     console.log(req.query.update);
-    const { id, action, acceptedBy } = JSON.parse(req.query.update);
+    const { id, action, acceptedBy, message } = JSON.parse(req.query.update);
     const query = { _id: new ObjectId(id) };
 
     const findUser = await messageCollection.findOne(query);
@@ -356,11 +356,16 @@ async function run() {
         isAccepted: 0,
         acceptedBy: "",
         noResponse: 0,
+        text: [],
       };
     }
 
     if (action === "chatEnd") {
       data = { ...findUser, chatEnd: 1 };
+    }
+    if (action === "text") {
+      findUser["text"].push(message);
+      data = { ...findUser };
     }
 
     console.log(data, "AFTER UPDATED");
@@ -395,6 +400,13 @@ async function run() {
     const result = await messageCollection
       .find({ isAccepted: 1, acceptedBy })
       .toArray();
+    res.send(result);
+  });
+
+  app.get("/messages", async (req, res) => {
+    const id = req.query.id;
+
+    const result = await messageCollection.findOne({ _id: new ObjectId(id) });
     res.send(result);
   });
 
@@ -448,6 +460,26 @@ async function run() {
       } else {
         socket.emit("connection-status", false);
       }
+    });
+
+    socket.on("private-message", ({ to, message }) => {
+      const findIndex = users.findIndex((user) => user.id === to);
+      console.log("FIND INDEX PM", findIndex, to, users);
+      if (findIndex !== -1) {
+        console.log(message, "message");
+        const toSocketId = users[findIndex].socketId;
+        io.to(toSocketId).emit("private-message", message);
+      }
+
+      // {
+      //   console.log(`User ${to} is not online.`);
+      //   // Handle the case where the recipient is not online or doesn't exist
+      //   // You may want to emit an event back to the sender indicating the issue
+      //   socket.emit("private-message-error", {
+      //     to,
+      //     message: "User not online",
+      //   });
+      // }
     });
 
     socket.on("disconnect", () => {
