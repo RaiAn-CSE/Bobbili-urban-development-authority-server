@@ -328,7 +328,7 @@ async function run() {
 
   app.get("/messageRequest", async (req, res) => {
     const result = await messageCollection
-      .find({ noResponse: 0, isAccepted: 0 })
+      .find({ "noResponse.condition": false, isAccepted: 0 })
       .toArray();
     res.send(result);
   });
@@ -366,6 +366,10 @@ async function run() {
     if (action === "text") {
       findUser["text"].push(message);
       data = { ...findUser };
+    }
+
+    if (action === "leaveMessage") {
+      data = { ...findUser, noResponse: { condition: true, query: message } };
     }
 
     console.log(data, "AFTER UPDATED");
