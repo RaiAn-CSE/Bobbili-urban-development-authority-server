@@ -319,6 +319,7 @@ async function run() {
         acceptedBy: "",
         noResponse: { condition: false, query: "" },
         leave: false,
+        timeUp: false,
         ...data,
       };
       const result = await messageCollection.insertOne(insertData);
@@ -328,7 +329,7 @@ async function run() {
 
   app.get("/messageRequest", async (req, res) => {
     const result = await messageCollection
-      .find({ "noResponse.condition": false, isAccepted: 0 })
+      .find({ "noResponse.condition": false, isAccepted: 0, timeUp: false })
       .toArray();
     res.send(result);
   });
@@ -345,7 +346,7 @@ async function run() {
       data = { ...findUser, acceptedBy, isAccepted: 1 };
     }
     if (action === "timeUp") {
-      data = { ...findUser, noResponse: 1 };
+      data = { ...findUser, timeUp: true };
       console.log(data, "TIMEUP");
     }
 
@@ -353,10 +354,7 @@ async function run() {
       console.log(findUser, "FIND USER");
       data = {
         ...findUser,
-        isAccepted: 0,
-        acceptedBy: "",
-        noResponse: 0,
-        text: [],
+        timeUp: false,
       };
     }
 
