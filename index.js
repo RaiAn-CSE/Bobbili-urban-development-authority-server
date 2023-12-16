@@ -313,13 +313,13 @@ async function run() {
 
     if (searchExistResult.acknowledged) {
       const insertData = {
-        ...data,
         text: [],
         chatEnd: 0,
         isAccepted: 0,
         acceptedBy: "",
-        noResponse: 0,
+        noResponse: { condition: false, query: "" },
         leave: false,
+        ...data,
       };
       const result = await messageCollection.insertOne(insertData);
       res.send(result);
@@ -379,7 +379,9 @@ async function run() {
   });
 
   app.get("/missedMessage", async (req, res) => {
-    const result = await messageCollection.find({ noResponse: 1 }).toArray();
+    const result = await messageCollection
+      .find({ "noResponse.condition": true })
+      .toArray();
 
     res.send(result);
   });
@@ -437,12 +439,11 @@ async function run() {
     const checkUpdateMessage = messageCollection.watch();
     checkUpdateMessage.on("change", async (change) => {
       console.log(change, "Change full document");
-      if (change?.operationType === "update") {
-        socket.emit("check-accept-message", {
-          change,
-        });
-      }
-      if (change?.operationType === "delete") {
+      if (
+        change?.operationType === "update" ||
+        change?.operationType === "delete" ||
+        change?.operationType === "insert"
+      ) {
         socket.emit("check-accept-message", {
           change,
         });
