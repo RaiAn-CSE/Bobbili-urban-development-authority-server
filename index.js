@@ -902,11 +902,12 @@ async function run() {
 
     if (req?.query?.data) {
       userInfo = JSON.parse(req?.query?.data);
-      role = userInfo?.role;
+      role = userInfo?.role.toLowerCase();
     }
 
     let query = {};
-    if (role === "PS") {
+    // let queryForPSExceptSubmitApplication = { psId: userInfo._id };
+    if (role === "ps") {
       const findPsInfo = await userCollection.findOne({
         _id: new ObjectId(userInfo?._id),
       });
@@ -919,6 +920,10 @@ async function run() {
         "buildingInfo.generalInformation.gramaPanchayat":
           findPsInfo?.gramaPanchayat,
       };
+    }
+
+    if (role === "ltp") {
+      query = { userId: userInfo._id };
     }
 
     console.log(role, "role");
@@ -937,7 +942,7 @@ async function run() {
       .find(query)
       .toArray();
 
-    if (role === "LTP" || role === "PS") {
+    if (role === "ltp" || role === "ps") {
       const total =
         totalRejectedApplications.length +
         totalApprovedApplications.length +
@@ -958,20 +963,48 @@ async function run() {
         shortfallAppCharges
       );
 
-      const result = {
-        applications: {
-          approvedApplications: totalApprovedApplications,
-          shortfallApplications: totalShortfallApplications,
-          totalRejectedApplications: totalRejectedApplications,
-        },
-        totalApplication: {
-          rejected: totalRejectedApplications.length,
-          approved: totalApprovedApplications.length,
-          shortfall: totalShortfallApplications.length,
-          total,
-        },
-        charges,
-      };
+      let result;
+
+      console.log("INSIDE LTP OR PS");
+
+      if (role === "ltp") {
+        const totalDraftApplications = await draftApplicationCollection
+          .find({ _id: new ObjectId() })
+          .toArray();
+
+        result = {
+          applications: {
+            createdApplications: totalDraftApplications,
+            approvedApplications: totalApprovedApplications,
+            shortfallApplications: totalShortfallApplications,
+            totalRejectedApplications: totalRejectedApplications,
+          },
+          totalApplication: {
+            created: totalDraftApplications.length,
+            rejected: totalRejectedApplications.length,
+            approved: totalApprovedApplications.length,
+            shortfall: totalShortfallApplications.length,
+            total,
+          },
+        };
+      } else {
+        result = {
+          applications: {
+            receivedApplications: totalSubmitApplications,
+            approvedApplications: totalApprovedApplications,
+            shortfallApplications: totalShortfallApplications,
+            totalRejectedApplications: totalRejectedApplications,
+          },
+          totalApplication: {
+            received: totalSubmitApplications.length,
+            rejected: totalRejectedApplications.length,
+            approved: totalApprovedApplications.length,
+            shortfall: totalShortfallApplications.length,
+            total,
+          },
+          charges,
+        };
+      }
 
       res.send(result);
     } else {
@@ -1303,11 +1336,15 @@ async function run() {
         return application;
       }
 
-      if (date === "6 months" && checkLastSixAndTweleveMonths(dateFromDB, 6)) {
+      if (date === "6 months" && checkMonths(dateFromDB, 6)) {
         return application;
       }
 
-      if (date === "1 year" && checkLastSixAndTweleveMonths(dateFromDB, 12)) {
+      if (date === "1 months" && checkMonths(dateFromDB, 1)) {
+        return application;
+      }
+
+      if (date === "1 year" && checkMonths(dateFromDB, 12)) {
         return application;
       }
     });
@@ -1320,11 +1357,14 @@ async function run() {
         return application;
       }
 
-      if (date === "6 months" && checkLastSixAndTweleveMonths(dateFromDB, 6)) {
+      if (date === "6 months" && checkMonths(dateFromDB, 6)) {
+        return application;
+      }
+      if (date === "1 months" && checkMonths(dateFromDB, 1)) {
         return application;
       }
 
-      if (date === "1 year" && checkLastSixAndTweleveMonths(dateFromDB, 12)) {
+      if (date === "1 year" && checkMonths(dateFromDB, 12)) {
         return application;
       }
     });
@@ -1401,7 +1441,7 @@ async function run() {
     }
   };
 
-  // console.log(checkLastSixAndTweleveMonths("2022-09-12", 12));
+  // console.log(checkMonths("2022-09-12", 12));
 
   const getChartData = async (flag, district, mandal, panchayat, date) => {
     const totalSubmitApplications = await submitApplicationCollection
@@ -1491,6 +1531,10 @@ async function run() {
     console.log(result, "ALL RESULT");
 
     res.send(result);
+  });
+
+  app.get("/getDateWiseApplications", async (req, res) => {
+    console.log(req.query, "QUERY");
   });
 
   //get serial number
