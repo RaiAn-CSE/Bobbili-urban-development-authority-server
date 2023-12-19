@@ -4,6 +4,7 @@ const app = express();
 const mime = require("mime-types");
 const multer = require("multer");
 const stream = require("stream");
+const { DateTime } = require("luxon");
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -895,6 +896,107 @@ async function run() {
     };
   };
 
+  const findApplicationData = async (query, role, id) => {
+    let totalSubmitApplications,
+      totalApprovedApplications,
+      totalShortfallApplications,
+      totalRejectedApplications,
+      totalDraftApplications;
+
+    if (role === "ltp") {
+      totalDraftApplications = await draftApplicationCollection
+        .find({ _id: new ObjectId(id) })
+        .toArray();
+      totalSubmitApplications = await submitApplicationCollection
+        .find(query)
+        .toArray();
+      totalApprovedApplications = await approvedCollection
+        .find(query)
+        .toArray();
+      totalShortfallApplications = await shortfallCollection
+        .find(query)
+        .toArray();
+      totalRejectedApplications = await rejectedCollection
+        .find(query)
+        .toArray();
+      if (
+        totalDraftApplications &&
+        totalSubmitApplications &&
+        totalApprovedApplications &&
+        totalShortfallApplications &&
+        totalRejectedApplications
+      ) {
+        return [
+          totalDraftApplications,
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          totalRejectedApplications,
+        ];
+      }
+    } else if (role === "ps") {
+      const findPsInfo = await userCollection.findOne({
+        _id: new ObjectId(id),
+      });
+
+      totalSubmitApplications = await submitApplicationCollection
+        .find({
+          "buildingInfo.generalInformation.district": findPsInfo.district,
+          "buildingInfo.generalInformation.mandal": findPsInfo.mandal,
+          "buildingInfo.generalInformation.gramaPanchayat":
+            findPsInfo?.gramaPanchayat,
+        })
+        .toArray();
+      totalApprovedApplications = await approvedCollection
+        .find(query)
+        .toArray();
+      totalShortfallApplications = await shortfallCollection
+        .find(query)
+        .toArray();
+      totalRejectedApplications = await rejectedCollection
+        .find(query)
+        .toArray();
+      if (
+        totalSubmitApplications &&
+        totalApprovedApplications &&
+        totalShortfallApplications &&
+        totalRejectedApplications
+      ) {
+        return [
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          totalRejectedApplications,
+        ];
+      }
+    } else {
+      totalSubmitApplications = await submitApplicationCollection
+        .find(query)
+        .toArray();
+      totalApprovedApplications = await approvedCollection
+        .find(query)
+        .toArray();
+      totalShortfallApplications = await shortfallCollection
+        .find(query)
+        .toArray();
+      totalRejectedApplications = await rejectedCollection
+        .find(query)
+        .toArray();
+      if (
+        totalSubmitApplications &&
+        totalApprovedApplications &&
+        totalShortfallApplications &&
+        totalRejectedApplications
+      ) {
+        return [
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          totalRejectedApplications,
+        ];
+      }
+    }
+  };
   // get number of applications
   app.get("/totalApplications", async (req, res) => {
     let role;
@@ -907,87 +1009,88 @@ async function run() {
 
     let query = {};
     // let queryForPSExceptSubmitApplication = { psId: userInfo._id };
-    if (role === "ps") {
-      const findPsInfo = await userCollection.findOne({
-        _id: new ObjectId(userInfo?._id),
-      });
-
-      console.log(findPsInfo);
-
-      query = {
-        "buildingInfo.generalInformation.district": findPsInfo.district,
-        "buildingInfo.generalInformation.mandal": findPsInfo.mandal,
-        "buildingInfo.generalInformation.gramaPanchayat":
-          findPsInfo?.gramaPanchayat,
-      };
-    }
-
-    if (role === "ltp") {
-      query = { userId: userInfo._id };
-    }
 
     console.log(role, "role");
     console.log(query, "USER INFO");
 
-    const totalSubmitApplications = await submitApplicationCollection
-      .find(query)
-      .toArray();
-    const totalApprovedApplications = await approvedCollection
-      .find(query)
-      .toArray();
-    const totalShortfallApplications = await shortfallCollection
-      .find(query)
-      .toArray();
-    const totalRejectedApplications = await rejectedCollection
-      .find(query)
-      .toArray();
-
     if (role === "ltp" || role === "ps") {
-      const total =
-        totalRejectedApplications.length +
-        totalApprovedApplications.length +
-        totalShortfallApplications.length;
+      if (role === "ps") {
+        // const findPsInfo = await userCollection.findOne({
+        //   _id: new ObjectId(userInfo?._id),
+        // });
+        // console.log(findPsInfo);
+        // query = {
+        //   "buildingInfo.generalInformation.district": findPsInfo.district,
+        //   "buildingInfo.generalInformation.mandal": findPsInfo.mandal,
+        //   "buildingInfo.generalInformation.gramaPanchayat":
+        //     findPsInfo?.gramaPanchayat,
+        // };
+      }
 
-      console.log(totalApprovedApplications, "APPROVED");
-      console.log(totalShortfallApplications, "SHORTFALL");
+      if (role === "ltp") {
+      }
 
-      console.log(total, "TOTAL");
+      // const total =
+      //   totalRejectedApplications.length +
+      //   totalApprovedApplications.length +
+      //   totalShortfallApplications.length;
 
-      const rejectedAppCharges = extractCharges(totalRejectedApplications);
-      const approvedAppCharges = extractCharges(totalApprovedApplications);
-      const shortfallAppCharges = extractCharges(totalShortfallApplications);
+      // console.log(totalApprovedApplications, "APPROVED");
+      // console.log(totalShortfallApplications, "SHORTFALL");
 
-      const charges = sumOfAllAppCharges(
-        rejectedAppCharges,
-        approvedAppCharges,
-        shortfallAppCharges
-      );
+      // console.log(total, "TOTAL");
 
-      let result;
+      // const rejectedAppCharges = extractCharges(totalRejectedApplications);
+      // const approvedAppCharges = extractCharges(totalApprovedApplications);
+      // const shortfallAppCharges = extractCharges(totalShortfallApplications);
+
+      // const charges = sumOfAllAppCharges(
+      //   rejectedAppCharges,
+      //   approvedAppCharges,
+      //   shortfallAppCharges
+      // );
+
+      // let result;
 
       console.log("INSIDE LTP OR PS");
 
       if (role === "ltp") {
-        const totalDraftApplications = await draftApplicationCollection
-          .find({ _id: new ObjectId() })
-          .toArray();
-
+        const id = userInfo._id;
+        query = { userId: id };
+        const [
+          totalDraftApplications,
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          totalRejectedApplications,
+        ] = await findApplicationData(query, role, id);
         result = {
           applications: {
             createdApplications: totalDraftApplications,
+            submitApplication: totalSubmitApplications,
             approvedApplications: totalApprovedApplications,
             shortfallApplications: totalShortfallApplications,
             totalRejectedApplications: totalRejectedApplications,
           },
           totalApplication: {
             created: totalDraftApplications.length,
+            submitted: totalSubmitApplications.length,
             rejected: totalRejectedApplications.length,
             approved: totalApprovedApplications.length,
             shortfall: totalShortfallApplications.length,
-            total,
           },
         };
       } else {
+        const id = userInfo._id;
+        query = { psId: id };
+
+        const [
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          totalRejectedApplications,
+        ] = await findApplicationData(query, role, id);
+
         result = {
           applications: {
             receivedApplications: totalSubmitApplications,
@@ -1000,42 +1103,50 @@ async function run() {
             rejected: totalRejectedApplications.length,
             approved: totalApprovedApplications.length,
             shortfall: totalShortfallApplications.length,
-            total,
           },
-          charges,
+          // charges,
         };
       }
 
       res.send(result);
     } else {
+      const [
+        totalSubmitApplications,
+        totalApprovedApplications,
+        totalShortfallApplications,
+        totalRejectedApplications,
+      ] = await findApplicationData(query);
       const total =
         totalSubmitApplications.length +
         totalApprovedApplications.length +
-        totalShortfallApplications.length;
+        totalShortfallApplications.length +
+        totalRejectedApplications.length;
 
-      const submitAppCharges = extractCharges(totalSubmitApplications);
-      const approvedAppCharges = extractCharges(totalApprovedApplications);
-      const shortfallAppCharges = extractCharges(totalShortfallApplications);
+      // const submitAppCharges = extractCharges(totalSubmitApplications);
+      // const approvedAppCharges = extractCharges(totalApprovedApplications);
+      // const shortfallAppCharges = extractCharges(totalShortfallApplications);
 
-      const charges = sumOfAllAppCharges(
-        submitAppCharges,
-        approvedAppCharges,
-        shortfallAppCharges
-      );
+      // const charges = sumOfAllAppCharges(
+      //   submitAppCharges,
+      //   approvedAppCharges,
+      //   shortfallAppCharges
+      // );
 
       const result = {
         applications: {
           approvedApplications: totalApprovedApplications,
           shortfallApplications: totalShortfallApplications,
           submittedApplications: totalSubmitApplications,
+          rejectedApplications: totalRejectedApplications,
         },
         totalApplication: {
-          received: totalApprovedApplications.length,
+          received: totalSubmitApplications.length,
           approved: totalApprovedApplications.length,
           shortfall: totalShortfallApplications.length,
+          rejected: totalRejectedApplications.length,
           total,
         },
-        charges,
+        // charges,
       };
 
       res.send(result);
@@ -1511,26 +1622,457 @@ async function run() {
 
   app.get("/filterApplications", async (req, res) => {
     const search = JSON.parse(req.query.search);
+    console.log(search, "Search");
+    if (search?.role === "ltp" || search?.role === "ps") {
+      console.log("LTP OR PS");
+      const id = search.id;
+      let query = {};
+      const searchDate = search.selectedDate;
+      console.log(searchDate, "Search date");
 
-    console.log(search);
-    const district = search.district;
-    const mandal = search.mandal;
-    const panchayat = search.panchayat;
-    const date = search.date;
+      const today = DateTime.local();
 
-    let flag;
+      let allDates = [];
+      let arrayOfApplications;
+      let applicationWiseDates = {};
 
-    flag = district.length ? 1 : flag;
-    flag = mandal.length ? 2 : flag;
-    flag = panchayat.length ? 3 : flag;
-    flag = date.length ? 4 : flag;
-    console.log(district, mandal, panchayat, date, flag);
+      if (search?.role === "ltp") {
+        query = { userId: id };
+        arrayOfApplications = await findApplicationData(
+          query,
+          search?.role,
+          id
+        );
 
-    const result = await getChartData(flag, district, mandal, panchayat, date);
+        const [
+          totalDraftApplications,
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          totalRejectedApplications,
+        ] = arrayOfApplications;
 
-    console.log(result, "ALL RESULT");
+        // console.log(
+        //   totalDraftApplications,
+        //   "draft",
+        //   totalSubmitApplications,
+        //   "submit",
+        //   totalApprovedApplications,
+        //   "app",
+        //   totalShortfallApplications,
+        //   "short",
+        //   totalRejectedApplications,
+        //   "Reject"
+        // );
 
-    res.send(result);
+        applicationWiseDates["DraftApp"] = totalDraftApplications.map(
+          (eachApp) => {
+            return eachApp.createdDate;
+          }
+        );
+        applicationWiseDates["SubmitApp"] = totalSubmitApplications.map(
+          (eachApp) => {
+            return eachApp.createdDate;
+          }
+        );
+        applicationWiseDates["ApprovedApp"] = totalApprovedApplications.map(
+          (eachApp) => {
+            return eachApp.createdDate;
+          }
+        );
+        applicationWiseDates["ShortfallApp"] = totalShortfallApplications.map(
+          (eachApp) => {
+            return eachApp.createdDate;
+          }
+        );
+        applicationWiseDates["RejectedApp"] = totalRejectedApplications.map(
+          (eachApp) => {
+            return eachApp.createdDate;
+          }
+        );
+
+        // console.log(applicationWiseDates, "Application wise dates");
+
+        arrayOfApplications.forEach((appCollection) => {
+          appCollection.forEach((eachApp) => {
+            allDates.push(eachApp.createdDate);
+          });
+        });
+      } else {
+        query = { psId: id };
+        arrayOfApplications = await findApplicationData(
+          query,
+          search?.role,
+          id
+        );
+
+        const [
+          totalSubmitApplications,
+          totalApprovedApplications,
+          totalShortfallApplications,
+          totalRejectedApplications,
+        ] = arrayOfApplications;
+
+        // console.log(
+        //   totalSubmitApplications,
+        //   "sub",
+        //   totalApprovedApplications,
+        //   "APP",
+        //   totalShortfallApplications,
+        //   "Short",
+        //   totalRejectedApplications,
+        //   "reject"
+        // );
+
+        applicationWiseDates["SubmitApp"] = totalSubmitApplications.map(
+          (eachApp) => {
+            return eachApp.submitDate;
+          }
+        );
+        applicationWiseDates["ApprovedApp"] = totalApprovedApplications.map(
+          (eachApp) => {
+            return eachApp.submitDate;
+          }
+        );
+
+        applicationWiseDates["ShortfallApp"] = totalShortfallApplications.map(
+          (eachApp) => {
+            return eachApp.submitDate;
+          }
+        );
+        applicationWiseDates["RejectedApp"] = totalRejectedApplications.map(
+          (eachApp) => {
+            return eachApp.submitDate;
+          }
+        );
+
+        arrayOfApplications.forEach((appCollection) => {
+          appCollection.forEach((eachApp) => {
+            allDates.push(eachApp.submitDate);
+          });
+        });
+      }
+
+      // console.log(arrayOfApplications, "ARRAY OF APPLICATIONS");
+      // console.log(allDates, "All Dates");
+
+      const appType = Object.keys(applicationWiseDates);
+      const appTypeDate = Object.values(applicationWiseDates);
+
+      // search day wise data for ltp and ps
+      if (searchDate === "1 week") {
+        const last7Days = Array.from({ length: 7 }, (_, index) =>
+          today.minus({ days: index }).toFormat("dd-MM-yyyy")
+        );
+
+        const result = {};
+        const applicationWiseCount = {};
+
+        // console.log(applicationWiseDates, "APP WISE DATES");
+
+        console.log(last7Days, "LAST 7 DAYS");
+
+        last7Days.forEach((date) => {
+          const date1 = DateTime.fromFormat(date, "dd-MM-yyyy");
+          let count = 0;
+
+          console.log(appType, appTypeDate, "APP TYPE");
+          appTypeDate.forEach((dates, index) => {
+            let countApp = 0;
+            console.log(dates, "Dates");
+            dates?.forEach((eachDate) => {
+              const date2 = DateTime.fromFormat(eachDate, "dd-MM-yyyy");
+              // console.log(date1, date2, "DEDATE");
+              console.log(date1, date2, "COUNT APP");
+              if (date1.equals(date2)) {
+                countApp++;
+              }
+            });
+            if (applicationWiseCount[appType[index]]) {
+              applicationWiseCount[appType[index]] =
+                applicationWiseCount[appType[index]] + countApp;
+            } else {
+              applicationWiseCount[appType[index]] = countApp;
+            }
+          });
+
+          allDates.forEach((each) => {
+            const date2 = DateTime.fromFormat(each, "dd-MM-yyyy");
+            if (date1.equals(date2)) {
+              count++;
+            }
+          });
+
+          result[date] = count;
+        });
+
+        console.log(last7Days, result, applicationWiseCount, "last 7 days");
+        res.send({ result, applicationWiseDates });
+      } else if (searchDate === "1 month") {
+        const last4Weeks = Array.from({ length: 4 }, (_, index) =>
+          today.minus({ weeks: index })
+        );
+
+        const last4WeeksDates = last4Weeks
+          .reverse()
+          .reduce((result, weekStart, index) => {
+            const weekDates = Array.from({ length: 7 }, (_, index) =>
+              weekStart.minus({ days: index }).toFormat("dd-MM-yyyy")
+            );
+            const weekResult = {};
+
+            weekResult[`${index + 1} week`] = weekDates;
+
+            // const result = {};
+
+            return result.concat(weekResult);
+          }, []);
+
+        const result = {};
+        const applicationWiseCount = {};
+
+        last4WeeksDates.forEach((eachWeek) => {
+          const weekDates = Object.values(eachWeek)[0];
+          const weekName = Object.keys(eachWeek)[0];
+          let count = 0;
+
+          console.log(weekDates, "WEEK DATES");
+          weekDates.forEach((date) => {
+            const date1 = DateTime.fromFormat(date, "dd-MM-yyyy");
+            console.log(date, "date");
+            console.log(appTypeDate, "APP TYPE DATE");
+
+            appTypeDate.forEach((dates, index) => {
+              let countApp = 0;
+              // console.log(dates, "Dates");
+              dates?.forEach((eachDate) => {
+                console.log(date, eachDate, "DDDD");
+                const date2 = DateTime.fromFormat(eachDate, "dd-MM-yyyy");
+                // console.log(date1, date2, "DEDATE");
+                // console.log(date1, date2, "COUNT APP");
+                if (date1.equals(date2)) {
+                  // console.log("object");
+                  countApp = countApp + 1;
+                }
+              });
+              console.log(countApp, "CA");
+              if (applicationWiseCount[appType[index]]) {
+                applicationWiseCount[appType[index]] =
+                  applicationWiseCount[appType[index]] + countApp;
+              } else {
+                applicationWiseCount[appType[index]] = countApp;
+              }
+              // console.log(countApp, "Count app");
+            });
+
+            // console.log(applicationWiseCount, "AWC");
+
+            allDates.forEach((eachDate) => {
+              const date2 = DateTime.fromFormat(eachDate, "dd-MM-yyyy");
+              // console.log(date, eachDate);
+              if (date1.equals(date2)) {
+                count++;
+              }
+            });
+          });
+
+          result[weekName] = count;
+        });
+
+        console.log(
+          last4Weeks,
+          last4WeeksDates,
+          result,
+          applicationWiseCount,
+          "LMD"
+        );
+        res.send({ result, applicationWiseCount });
+      } else if (searchDate === "6 months") {
+        const startOfThisMonth = today.startOf("month");
+        const startOfPreviousSixMonths = Array.from({ length: 6 }, (_, index) =>
+          today.minus({ months: index + 1 }).startOf("month")
+        );
+
+        const previousSixMonthsDates = startOfPreviousSixMonths
+          .reverse()
+          .reduce((result, monthStart) => {
+            // Exclude the current month
+            if (!monthStart.equals(startOfThisMonth)) {
+              const monthDates = Array.from(
+                { length: monthStart.daysInMonth },
+                (_, index) =>
+                  monthStart.set({ day: index + 1 }).toFormat("dd-MM-yyyy")
+              );
+
+              console.log(monthDates[0]);
+
+              const date = DateTime.fromFormat(monthDates[0], "dd-MM-yyyy");
+              const monthName = date.toLocaleString({ month: "long" });
+
+              const monthWiseDate = {};
+
+              monthWiseDate[monthName] = monthDates;
+
+              return result.concat(monthWiseDate);
+            }
+            return result;
+          }, []);
+
+        let result = {};
+        const applicationWiseCount = {};
+
+        previousSixMonthsDates.forEach((eachMonth) => {
+          const monthDates = Object.values(eachMonth)[0];
+          const monthName = Object.keys(eachMonth)[0];
+
+          let count = 0;
+          monthDates.forEach((eachDate) => {
+            const date1 = DateTime.fromFormat(eachDate, "dd-MM-yyyy");
+
+            appTypeDate.forEach((dates, index) => {
+              let countApp = 0;
+              // console.log(dates, "Dates");
+              dates?.forEach((eachDate) => {
+                const date2 = DateTime.fromFormat(eachDate, "dd-MM-yyyy");
+                // console.log(date1, date2, "DEDATE");
+                // console.log(date1, date2, "COUNT APP");
+                if (date1.equals(date2)) {
+                  // console.log("object");
+                  countApp = countApp + 1;
+                }
+              });
+              console.log(countApp, "CA");
+              if (applicationWiseCount[appType[index]]) {
+                applicationWiseCount[appType[index]] =
+                  applicationWiseCount[appType[index]] + countApp;
+              } else {
+                applicationWiseCount[appType[index]] = countApp;
+              }
+              // console.log(countApp, "Count app");
+            });
+            allDates.forEach((date) => {
+              const date2 = DateTime.fromFormat(date, "dd-MM-yyyy");
+              if (date1.equals(date2)) {
+                count++;
+              }
+            });
+          });
+
+          result[monthName] = count;
+        });
+
+        console.log(
+          previousSixMonthsDates,
+          result,
+          applicationWiseCount,
+          "RES"
+        );
+        res.send({ result, arrayOfApplications });
+      } else if (searchDate === "1 year") {
+        // const endDate = DateTime.fromFormat(today, "yyyy-MM-dd");
+        const startDate = today.minus({ years: 1 });
+
+        const datesForLastYearByMonth = [];
+
+        let currentDate = startDate;
+        while (currentDate <= today) {
+          const monthName = currentDate.toFormat("MMMM");
+          const year = currentDate.toFormat("yyyy");
+          const formattedDate = currentDate.toFormat("dd-MM-yyyy");
+
+          // Check if the month exists in the array
+          const existingMonth = datesForLastYearByMonth.find(
+            (entry) => entry.month === monthName
+          );
+
+          if (existingMonth) {
+            // If the month exists, add the date to its array
+            existingMonth.dates.push(formattedDate);
+          } else {
+            // If the month doesn't exist, create a new entry
+            datesForLastYearByMonth.push({
+              month: monthName,
+              year,
+              dates: [formattedDate],
+            });
+          }
+
+          currentDate = currentDate.plus({ days: 1 });
+        }
+
+        let result = {};
+        const applicationWiseCount = {};
+
+        datesForLastYearByMonth.forEach((eachMonth) => {
+          const month = eachMonth.month + ", " + eachMonth.year;
+          const monthDates = eachMonth.dates;
+
+          console.log(monthDates, "MonthDates");
+          let count = 0;
+          monthDates.forEach((eachDate) => {
+            const date1 = DateTime.fromFormat(eachDate, "dd-MM-yyyy");
+
+            appTypeDate.forEach((dates, index) => {
+              let countApp = 0;
+              // console.log(dates, "Dates");
+              dates?.forEach((eachDate) => {
+                const date2 = DateTime.fromFormat(eachDate, "dd-MM-yyyy");
+                // console.log(date1, date2, "DEDATE");
+                // console.log(date1, date2, "COUNT APP");
+                if (date1.equals(date2)) {
+                  // console.log("object");
+                  countApp = countApp + 1;
+                }
+              });
+              console.log(countApp, "CA");
+              if (applicationWiseCount[appType[index]]) {
+                applicationWiseCount[appType[index]] =
+                  applicationWiseCount[appType[index]] + countApp;
+              } else {
+                applicationWiseCount[appType[index]] = countApp;
+              }
+              // console.log(countApp, "Count app");
+            });
+
+            allDates.forEach((date) => {
+              const date2 = DateTime.fromFormat(date, "dd-MM-yyyy");
+              if (date1.equals(date2)) {
+                count++;
+              }
+            });
+          });
+
+          result[month] = count;
+        });
+        console.log(result, applicationWiseCount, "RESULT");
+        res.send({ result, applicationWiseCount });
+      }
+    } else {
+      const district = search.district;
+      const mandal = search.mandal;
+      const panchayat = search.panchayat;
+      const date = search.date;
+
+      let flag;
+
+      flag = district.length ? 1 : flag;
+      flag = mandal.length ? 2 : flag;
+      flag = panchayat.length ? 3 : flag;
+      flag = date.length ? 4 : flag;
+      console.log(district, mandal, panchayat, date, flag);
+
+      const result = await getChartData(
+        flag,
+        district,
+        mandal,
+        panchayat,
+        date
+      );
+
+      console.log(result, "ALL RESULT");
+
+      res.send(result);
+    }
   });
 
   app.get("/getDateWiseApplications", async (req, res) => {
