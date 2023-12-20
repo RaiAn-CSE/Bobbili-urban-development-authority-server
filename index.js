@@ -1114,13 +1114,13 @@ async function run() {
         totalSubmitApplications,
         totalApprovedApplications,
         totalShortfallApplications,
-        totalRejectedApplications,
+        // totalRejectedApplications,
       ] = await findApplicationData(query);
       const total =
         totalSubmitApplications.length +
         totalApprovedApplications.length +
-        totalShortfallApplications.length +
-        totalRejectedApplications.length;
+        totalShortfallApplications.length;
+      // totalRejectedApplications.length;
 
       // const submitAppCharges = extractCharges(totalSubmitApplications);
       // const approvedAppCharges = extractCharges(totalApprovedApplications);
@@ -1137,13 +1137,13 @@ async function run() {
           approvedApplications: totalApprovedApplications,
           shortfallApplications: totalShortfallApplications,
           submittedApplications: totalSubmitApplications,
-          rejectedApplications: totalRejectedApplications,
+          // rejectedApplications: totalRejectedApplications,
         },
         totalApplication: {
           received: totalSubmitApplications.length,
           approved: totalApprovedApplications.length,
           shortfall: totalShortfallApplications.length,
-          rejected: totalRejectedApplications.length,
+          // rejected: totalRejectedApplications.length,
           total,
         },
         // charges,
