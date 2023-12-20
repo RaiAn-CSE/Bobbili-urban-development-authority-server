@@ -344,7 +344,12 @@ async function run() {
     let data;
 
     if (action === "accept") {
-      data = { ...findUser, acceptedBy, isAccepted: 1 };
+      data = {
+        ...findUser,
+        acceptedBy,
+        isAccepted: 1,
+        newTextFromCustomer: [],
+      };
     }
     if (action === "timeUp") {
       data = { ...findUser, timeUp: true };
@@ -364,6 +369,10 @@ async function run() {
     }
     if (action === "text") {
       findUser["text"].push(message);
+
+      if (!message?.userId?.toLowerCase()?.includes("admin")) {
+        findUser["newTextFromCustomer"].push(message?.message);
+      }
       data = { ...findUser };
     }
 
@@ -371,6 +380,10 @@ async function run() {
       data = { ...findUser, noResponse: { condition: true, query: message } };
     }
 
+    if (action === "trackCustomerNewMessage") {
+      findUser["newTextFromCustomer"] = [];
+      data = { ...findUser };
+    }
     console.log(data, "AFTER UPDATED");
     const updatedDoc = {
       $set: { ...data },
@@ -1750,6 +1763,8 @@ async function run() {
           });
         });
       }
+
+      console.log(allDates, "All dates");
 
       // console.log(arrayOfApplications, "ARRAY OF APPLICATIONS");
       // console.log(allDates, "All Dates");
