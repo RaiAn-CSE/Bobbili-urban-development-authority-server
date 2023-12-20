@@ -1665,27 +1665,25 @@ async function run() {
         //   "Reject"
         // );
 
-        applicationWiseDates["DraftApp"] = totalDraftApplications.map(
+        applicationWiseDates["New"] = totalDraftApplications.map((eachApp) => {
+          return eachApp.createdDate;
+        });
+        applicationWiseDates["Submitted"] = totalSubmitApplications.map(
           (eachApp) => {
             return eachApp.createdDate;
           }
         );
-        applicationWiseDates["SubmitApp"] = totalSubmitApplications.map(
+        applicationWiseDates["Approved"] = totalApprovedApplications.map(
           (eachApp) => {
             return eachApp.createdDate;
           }
         );
-        applicationWiseDates["ApprovedApp"] = totalApprovedApplications.map(
+        applicationWiseDates["Shortfall"] = totalShortfallApplications.map(
           (eachApp) => {
             return eachApp.createdDate;
           }
         );
-        applicationWiseDates["ShortfallApp"] = totalShortfallApplications.map(
-          (eachApp) => {
-            return eachApp.createdDate;
-          }
-        );
-        applicationWiseDates["RejectedApp"] = totalRejectedApplications.map(
+        applicationWiseDates["Rejected"] = totalRejectedApplications.map(
           (eachApp) => {
             return eachApp.createdDate;
           }
@@ -1724,23 +1722,23 @@ async function run() {
         //   "reject"
         // );
 
-        applicationWiseDates["SubmitApp"] = totalSubmitApplications.map(
+        applicationWiseDates["Submitted"] = totalSubmitApplications.map(
           (eachApp) => {
             return eachApp.submitDate;
           }
         );
-        applicationWiseDates["ApprovedApp"] = totalApprovedApplications.map(
+        applicationWiseDates["Approved"] = totalApprovedApplications.map(
           (eachApp) => {
             return eachApp.submitDate;
           }
         );
 
-        applicationWiseDates["ShortfallApp"] = totalShortfallApplications.map(
+        applicationWiseDates["Shortfall"] = totalShortfallApplications.map(
           (eachApp) => {
             return eachApp.submitDate;
           }
         );
-        applicationWiseDates["RejectedApp"] = totalRejectedApplications.map(
+        applicationWiseDates["Rejected"] = totalRejectedApplications.map(
           (eachApp) => {
             return eachApp.submitDate;
           }
@@ -1807,7 +1805,7 @@ async function run() {
         });
 
         console.log(last7Days, result, applicationWiseCount, "last 7 days");
-        res.send({ result, applicationWiseDates });
+        res.send({ result, applicationWiseCount });
       } else if (searchDate === "1 month") {
         const last4Weeks = Array.from({ length: 4 }, (_, index) =>
           today.minus({ weeks: index })
@@ -1967,7 +1965,7 @@ async function run() {
           applicationWiseCount,
           "RES"
         );
-        res.send({ result, arrayOfApplications });
+        res.send({ result, applicationWiseCount });
       } else if (searchDate === "1 year") {
         // const endDate = DateTime.fromFormat(today, "yyyy-MM-dd");
         const startDate = today.minus({ years: 1 });
