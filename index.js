@@ -384,6 +384,12 @@ async function run() {
       findUser["newTextFromCustomer"] = [];
       data = { ...findUser };
     }
+
+    if (action === "leaveFromTheMessage") {
+      findUser["leave"] = true;
+      data = { ...findUser };
+    }
+
     console.log(data, "AFTER UPDATED");
     const updatedDoc = {
       $set: { ...data },
