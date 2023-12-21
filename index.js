@@ -386,7 +386,9 @@ async function run() {
     }
 
     if (action === "leaveFromTheMessage") {
-      findUser["leave"] = true;
+      if ("leave" in findUser) {
+        findUser["leave"] = true;
+      }
       data = { ...findUser };
     }
 
