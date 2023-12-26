@@ -311,7 +311,7 @@ async function run() {
 
   app.get("/getVisitorCount", async (req, res) => {
     const result = await visitorCountCollection.find({}).toArray();
-    return result;
+    res.send(result);
   });
 
   app.patch("/increaseVisitorCount", async (req, res) => {
@@ -321,14 +321,16 @@ async function run() {
       { $inc: { count: 1 } }
     );
     console.log(result);
+
+    res.send(result);
   });
 
   // handover by ps
   app.patch("/handOveredByPs", async (req, res) => {
-    const id = req.query.id;
+    const id = JSON.parse(req.query.id);
     const filter = { _id: new ObjectId(id) };
     const updateDoc = {
-      $set: { handover: 1 },
+      $set: { handOver: true },
     };
     const result = await userCollection.updateOne(filter, updateDoc);
     res.send(result);
@@ -607,6 +609,10 @@ async function run() {
       const { _id, role, userId, password, name } = result;
 
       const userInfo = { _id, role, userId, password, name };
+
+      if (role?.toLowerCase() === "ps") {
+        userInfo["handOver"] = result?.handOver;
+      }
 
       res.send({
         status: 1,
