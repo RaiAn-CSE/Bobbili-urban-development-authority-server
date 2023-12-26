@@ -2566,6 +2566,10 @@ async function run() {
 
     console.log(id, data);
 
+    // if (data?.role?.toLowerCase() === "ps") {
+    //   data["handOver"] = data?.handOver === "true" ? true : false;
+    // }
+
     const filter = { _id: new ObjectId(id) };
 
     const updateDoc = {
