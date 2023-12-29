@@ -303,6 +303,41 @@ async function run() {
     .db("Construction-Application")
     .collection("messageRequest");
 
+  const visitorCountCollection = client
+    .db("Construction-Application")
+    .collection("visitorCount");
+
+  // visitor count api
+
+  app.get("/getVisitorCount", async (req, res) => {
+    const result = await visitorCountCollection.find({}).toArray();
+    res.send(result);
+  });
+
+  app.patch("/increaseVisitorCount", async (req, res) => {
+    console.log("visitor count");
+    const result = await visitorCountCollection.updateOne(
+      { _id: new ObjectId("65886ee5b7ea9902499d4dca") },
+      { $inc: { count: 1 } }
+    );
+    console.log(result);
+
+    res.send(result);
+  });
+
+  // handover by ps
+  app.patch("/handOveredByPs", async (req, res) => {
+    const id = JSON.parse(req.query.id);
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+      $set: { handOver: true },
+    };
+    const result = await userCollection.updateOne(filter, updateDoc);
+    res.send(result);
+  });
+
+  // chat box related api
+
   app.post("/messageRequest", async (req, res) => {
     const data = req.body;
     console.log(data);
@@ -386,7 +421,9 @@ async function run() {
     }
 
     if (action === "leaveFromTheMessage") {
-      findUser["leave"] = true;
+      if ("leave" in findUser) {
+        findUser["leave"] = true;
+      }
       data = { ...findUser };
     }
 
@@ -520,6 +557,8 @@ async function run() {
     });
   });
 
+  // jwt related api
+
   function generateToken(data) {
     return jwt.sign(data, process.env.PRIVATE_TOKEN, { expiresIn: "3h" });
   }
@@ -556,6 +595,7 @@ async function run() {
     const result = await documentPageCollection.find({}).toArray();
     res.send(result);
   });
+
   // get users data
   app.get("/getUser", async (req, res) => {
     const id = req.query.id;
@@ -569,6 +609,10 @@ async function run() {
       const { _id, role, userId, password, name } = result;
 
       const userInfo = { _id, role, userId, password, name };
+
+      if (role?.toLowerCase() === "ps") {
+        userInfo["handOver"] = result?.handOver;
+      }
 
       res.send({
         status: 1,
@@ -2521,6 +2565,10 @@ async function run() {
     const data = req.body;
 
     console.log(id, data);
+
+    // if (data?.role?.toLowerCase() === "ps") {
+    //   data["handOver"] = data?.handOver === "true" ? true : false;
+    // }
 
     const filter = { _id: new ObjectId(id) };
 
