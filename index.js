@@ -606,9 +606,9 @@ async function run() {
     console.log(result);
 
     if (result) {
-      const { _id, role, userId, password, name } = result;
+      const { _id, role, userId, password, name, gender } = result;
 
-      const userInfo = { _id, role, userId, password, name };
+      const userInfo = { _id, role, userId, password, name, gender };
 
       if (role?.toLowerCase() === "ps") {
         userInfo["handOver"] = result?.handOver;
