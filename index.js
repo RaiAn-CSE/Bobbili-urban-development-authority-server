@@ -330,7 +330,7 @@ async function run() {
     const id = JSON.parse(req.query.id);
     const filter = { _id: new ObjectId(id) };
     const updateDoc = {
-      $set: { handOver: true },
+      $set: { handOver: "true" },
     };
     const result = await userCollection.updateOne(filter, updateDoc);
     res.send(result);
