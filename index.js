@@ -998,9 +998,14 @@ async function run() {
         ];
       }
     } else if (role === "ps") {
+      console.log("aschi ps");
       const findPsInfo = await userCollection.findOne({
         _id: new ObjectId(id),
       });
+
+      console.log(findPsInfo, "ps info");
+
+      console.log(query);
 
       totalSubmitApplications = await submitApplicationCollection
         .find({
@@ -1019,6 +1024,13 @@ async function run() {
       totalRejectedApplications = await rejectedCollection
         .find(query)
         .toArray();
+
+      console.log(
+        totalSubmitApplications,
+        totalApprovedApplications,
+        totalShortfallApplications,
+        totalRejectedApplications
+      );
       if (
         totalSubmitApplications &&
         totalApprovedApplications &&
@@ -1067,7 +1079,7 @@ async function run() {
 
     if (req?.query?.data) {
       userInfo = JSON.parse(req?.query?.data);
-      role = userInfo?.role.toLowerCase();
+      role = userInfo?.role?.toLowerCase();
     }
 
     let query = {};
