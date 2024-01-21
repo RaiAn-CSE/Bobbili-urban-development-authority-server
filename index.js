@@ -314,12 +314,22 @@ async function run() {
     res.send(result);
   });
 
-  app.patch("/increaseVisitorCount", async (req, res) => {
+  app.patch("/updateWithLoggedIn", async (req, res) => {
     console.log("visitor count");
+
+    const userId = JSON.parse(req.query.userId);
+
+    const updateDoc = {
+      $set: { isLoggedIn: 1 },
+    };
+    const filter = { _id: new ObjectId(userId) };
+    const updateLoggedInfo = await userCollection.updateOne(filter, updateDoc);
+
     const result = await visitorCountCollection.updateOne(
       { _id: new ObjectId("65886ee5b7ea9902499d4dca") },
       { $inc: { count: 1 } }
     );
+
     console.log(result);
 
     res.send(result);
