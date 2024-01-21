@@ -314,6 +314,7 @@ async function run() {
     res.send(result);
   });
 
+  // update logged in flag  and increase visitor count
   app.patch("/updateWithLoggedIn", async (req, res) => {
     console.log("visitor count");
 
@@ -331,6 +332,19 @@ async function run() {
     );
 
     console.log(result);
+
+    res.send(result);
+  });
+
+  // reverse logged in flag at log out
+  app.patch("/reverseLoggedInFlag", async (req, res) => {
+    const userId = JSON.parse(req.query.userId);
+    console.log(userId, "id");
+    const filter = { _id: new ObjectId(userId) };
+    const updateDoc = {
+      $set: { isLoggedIn: 0 },
+    };
+    const result = await userCollection.updateOne(filter, updateDoc);
 
     res.send(result);
   });
