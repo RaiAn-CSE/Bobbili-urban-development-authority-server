@@ -2422,6 +2422,7 @@ async function run() {
       drawing: "1wRElw-4faLOZWQjV4dzcQ2lHG-IhMhQd",
       payment: "1pWE9tZrfsjiZxNORP5ZwL7Bm72S7JKpY",
       siteInspection: "1uVuXJz9kfWXyAg5ENfEiWL2qfDtCMa_Z",
+      approvedDocSignedPS: "1QCF6Cj1p_UG7xAx_JY0fTaQgzjKXWOAH",
     };
 
     console.log("Aschi");
@@ -2965,7 +2966,9 @@ async function run() {
   });
 
   app.delete("/decisionOfPs", async (req, res) => {
-    const { applicationNo, trackPSAction, psId } = JSON.parse(req.query.data);
+    const { applicationNo, trackPSAction, psId, psSignedFiles } = JSON.parse(
+      req.query.data
+    );
 
     console.log(req.query.data, "DECIsion");
 
@@ -3018,7 +3021,7 @@ async function run() {
       needToAdd = { psSubmitDate, status, psId };
     }
 
-    const updateData = { ...findApplication, ...needToAdd };
+    const updateData = { ...findApplication, ...needToAdd, psSignedFiles };
 
     console.log(updateData, "updateDoc");
     const updateDoc = {
