@@ -740,6 +740,13 @@ async function run() {
       });
     }
 
+    if (page.toLowerCase() === "outward") {
+      result =
+        (await shortfallCollection.findOne({ applicationNo: appNo })) ||
+        (await approvedCollection.findOne({ applicationNo: appNo })) ||
+        (await rejectedCollection.findOne({ applicationNo: appNo }));
+    }
+
     // const result = await userCollection
     //   .aggregate([
     //     {
