@@ -197,10 +197,10 @@ const deletePreviousFile = (oldData, newData) => {
     checkExistImageId(extractOldDynamicData, extractNewDynamicData);
   }
 
-  if (newData.drawing) {
-    console.log(oldData.drawing, "OLD DATA");
-    const extractOldData = Object.values(oldData.drawing);
-    const extractNewData = Object.values(newData.drawing);
+  if (newData?.drawing) {
+    console.log(oldData?.drawing, "OLD DATA");
+    const extractOldData = Object.values(oldData?.drawing);
+    const extractNewData = Object.values(newData?.drawing);
 
     fileIdArr = extractOldData.filter(
       (old, index) => old !== extractNewData[index]
@@ -210,7 +210,7 @@ const deletePreviousFile = (oldData, newData) => {
   }
 
   // FOR PAYMENT OLD IMAGE FILES
-  if (newData.payment) {
+  if (newData?.payment) {
     const oldDGramaFee =
       oldData?.payment?.gramaPanchayatFee?.gramaBankReceipt ?? "";
     const oldLabourCharge =
@@ -2481,8 +2481,6 @@ async function run() {
 
     // console.log(oldDraftData, "OLD DRAFT MAIN");
 
-    console.log(OldApplicationData, "Old draft data");
-    console.log(newDraftData, "New draft data");
 
     // const findExistingData = oldDraftData.findIndex(
     //   (application) => application.applicationNo === newDraftData.applicationNo
